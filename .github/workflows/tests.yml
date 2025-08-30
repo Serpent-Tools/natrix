@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        uses: dagger/dagger-for-github@v8.1.0
+        with:
+          verb: run
+          args: cargo run -p dagger_pipeline -- tests --tui
