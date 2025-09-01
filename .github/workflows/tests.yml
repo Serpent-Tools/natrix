@@ -1,8 +1,7 @@
-name: CI
+name: Tests and lints
 
 on:
   pull_request:
-  workflow_dispatch:
 
 jobs:
   ci:
@@ -13,8 +12,35 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Run tests
-        uses: dagger/dagger-for-github@v8.1.0
+      - name: Install dagger
+        run: curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR=$HOME/.local/bin sh
+
+      - uses: actions/cache/restore@v4
         with:
-          verb: run
-          args: cargo run -p dagger_pipeline -- tests --tui
+          path: ./cache
+          key: dagger-cache-${{ github.run_id }}
+          restore-keys:
+            dagger-cache-
+
+      - name: make sure cache directory exists.
+        run: mkdir -p ./cache/target
+
+      - name: Run tests
+        id: tests
+        run: dagger run cargo run -p dagger_pipeline --features ci -- tests --export
+        continue-on-error: true
+
+      - uses: actions/cache/save@v4
+        with:
+          path: ./cache
+          key: dagger-cache-${{ github.run_id }}
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: ./allure_report
+
+      - name: Fail Workflow
+        if: steps.tests.outcome == 'failure'
+        run: exit 1

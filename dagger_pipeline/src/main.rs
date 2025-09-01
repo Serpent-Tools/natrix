@@ -21,6 +21,9 @@ struct TestCommand {
     /// Output to a tui instead
     #[arg(short, long)]
     tui: bool,
+    /// Generate the allure report but just export it to the host.
+    #[arg(long)]
+    export: bool,
 }
 
 /// Run a dagger pipeline too generate test reports.
@@ -75,7 +78,7 @@ mod prelude {
                     no_cache: None,
                 },
             );
-            self.with_directory("/app", workspace)
+            self.with_mounted_directory("/app", workspace)
                 .with_workdir("/app")
                 .with_mounted_cache("/app/target", client.cache_volume("rust-target"))
         }
@@ -109,7 +112,31 @@ async fn main() -> Result<()> {
     dagger_sdk::connect(async move |client| {
         match arguments {
             Cli::Tests(arguments) => {
+                if cfg!(feature = "ci") {
+                    base_images::base(&client)
+                        .with_workspace(&client)
+                        .with_mounted_directory("/load_cache", client.host().directory("./cache"))
+                        .with_exec(vec![
+                            "sh",
+                            "-c",
+                            "mv /load_cache/target/* /app/target/* || true",
+                        ])
+                        .sync()
+                        .await?;
+                }
+
                 let reports = report::run_all_tests(&client, &arguments).await?;
+
+                if cfg!(feature = "ci") {
+                    base_images::base(&client)
+                        .with_workspace(&client)
+                        .with_exec(vec!["mkdir", "/store_cache"])
+                        .with_exec(vec!["sh", "-c", "cp -r /app/target /store_cache"])
+                        .directory("/store_cache")
+                        .export("./cache")
+                        .await?;
+                }
+
                 if arguments.tui {
                     let total = reports.len();
                     let mut pass = 0u16;
@@ -142,8 +169,19 @@ async fn main() -> Result<()> {
                         return Err(eyre!("Tests failed"));
                     }
                 } else {
-                    let report = report::generate_allure_report(&client, reports).await?;
-                    report::serve_dist(&client, report).await?;
+                    let report = report::generate_allure_report(&client, &reports).await?;
+
+                    if arguments.export {
+                        report.export("./allure_report/").await?;
+                        let tests_failed = reports
+                            .into_iter()
+                            .any(|report| matches!(report.status, TestStatus::Failed));
+                        if tests_failed {
+                            return Err(eyre!("Tests failed"));
+                        }
+                    } else {
+                        report::serve_dist(&client, report).await?;
+                    }
                 }
             }
             Cli::Fix => {

@@ -45,8 +45,6 @@
             ])
             pkgs.nur.repos.dagger.dagger
             just
-            bacon
-            cargo-edit
 
             wasm-bindgen-cli_0_2_100
             binaryen
