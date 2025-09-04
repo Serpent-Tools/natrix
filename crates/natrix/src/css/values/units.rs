@@ -1,21 +1,7 @@
 //! Implement the various css units
-use crate::css::values::IntoCss;
-
-/// Create a instance of a css unit, verifying at compile time the correct ranges.
-#[macro_export]
-macro_rules! unit {
-    ($value:literal %) => {{
-        #[expect(dead_code, reason="cargo check/clippy only checks const expressions if actually assigned to a constant.")]
-        const CHECK: () = const {
-            debug_assert!($value >= 0.0, "percentage must be in range 0-100");
-            debug_assert!($value <= 100.0, "percentage must be in range 0-100");
-        };
-        $crate::css::values::units::Percentage($value)
-    }};
-}
+use crate::css::values::{CssPropertyValue, IntoCss};
 
 /// A css percentage.
-/// For compile-time validating a valid percentage use `unit!` macro
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 #[cfg_attr(
     all(test, not(target_arch = "wasm32")),
@@ -23,44 +9,128 @@ macro_rules! unit {
 )]
 pub struct Percentage(pub f32);
 
-/// A css `<length>` value,
-#[derive(Clone, Copy, PartialEq, Debug)]
-#[cfg_attr(
-    all(test, not(target_arch = "wasm32")),
-    derive(proptest_derive::Arbitrary)
-)]
-pub struct Length {
-    /// The value itself
-    pub value: f64,
-    /// The unit to use
-    pub unit: super::LengthUnit,
-}
-
 impl IntoCss for Percentage {
     fn into_css(self) -> String {
         format!("{}%", self.0)
     }
 }
 
-/// ```compile_fail
-/// use natrix::unit;
-/// let x = unit!(200.0%);
-/// ```
-/// ```compile_fail
-/// use natrix::unit;
-/// let x = unit!(-10.0%);
-/// ```
-#[expect(dead_code, reason = "For compile fail tests only")]
-fn compile_fail() {}
+impl CssPropertyValue for Percentage {
+    type Kind = Percentage;
+}
 
-#[cfg(test)]
-mod test {
-    use super::*;
+/// <https://developer.mozilla.org/en-US/docs/Web/CSS/angle>
+#[derive(Clone, Copy, Debug)]
+#[cfg_attr(
+    all(test, not(target_arch = "wasm32")),
+    derive(proptest_derive::Arbitrary)
+)]
+pub enum Angle {
+    /// 1/360 of a circle
+    Degree(f32),
+    /// 1/400 of a circle
+    Gradian(f32),
+    /// 1/2pi of a circle
+    Radian(f32),
+    /// 1/1 of a circle
+    Turn(f32),
+}
 
-    #[test]
-    fn valid_cases() {
-        assert_eq!(unit!(0.0%), Percentage(0.0));
-        assert_eq!(unit!(100.0%), Percentage(100.0));
-        assert_eq!(unit!(50.0%), Percentage(50.0));
+impl IntoCss for Angle {
+    fn into_css(self) -> String {
+        match self {
+            Self::Degree(degrees) => format!("{degrees}deg"),
+            Self::Gradian(gradian) => format!("{gradian}grad"),
+            Self::Radian(radian) => format!("{radian}rad"),
+            Self::Turn(turn) => format!("{turn}turn"),
+        }
     }
+}
+
+impl CssPropertyValue for Angle {
+    type Kind = Angle;
+}
+
+/// Define the `Length` enum
+macro_rules! define_length_enum {
+    ($($variant:ident => $value:literal),+ $(,)?) => {
+        /// A css `<length>` value,
+        #[derive(Clone, Copy, PartialEq, Debug)]
+        #[cfg_attr(
+            all(test, not(target_arch = "wasm32")),
+            derive(proptest_derive::Arbitrary)
+        )]
+        pub enum Length {
+            $(
+                #[doc = $value]
+                #[doc(alias = $value)]
+                $variant(f32)
+            ),+
+        }
+
+        impl IntoCss for Length {
+            fn into_css(self) -> String {
+                let (value, suffix) = match self {
+                    $(Self::$variant(value) => (value, $value)),+
+                };
+                format!("{value}{suffix}")
+            }
+        }
+    };
+}
+
+impl CssPropertyValue for Length {
+    type Kind = Length;
+}
+
+define_length_enum! {
+    CapitalHeight => "cap",
+    Character => "ch",
+    FontSize => "em",
+    Xheight => "ex",
+    IdealCharacter => "ic",
+    Lineheight => "lh",
+    RootCapHeight => "rcap",
+    RootCharacter => "rch",
+    RootFontSize => "rem",
+    RootXheight => "rex",
+    RootIdealCharacter => "ric",
+    RootLineheight => "rlh",
+    ContainerQueryWidth => "cqw",
+    ContainerQueryHeight => "cqh",
+    ContainerQueryInlineSize => "cqi",
+    ContainerQueryBlockSize => "cqb",
+    ContainerQueryMax => "cqmax",
+    ContainerQueryMin => "cqmin",
+    Pixel => "px",
+    CentiMeter => "cm",
+    Millimeter => "mm",
+    QuarterMillimeter => "Q",
+    Inch => "in",
+    Pica => "pc",
+    Point => "pt",
+    ViewportHeight => "vh",
+    ViewportWidth => "vw",
+    ViewportMax => "vmax",
+    ViewportMin => "vmin",
+    ViewportBlockAxis => "vb",
+    ViewportInlineAxis => "vi",
+    SmallViewportHeight => "svh",
+    SmallViewportWidth => "svw",
+    SmallViewportMax => "svmax",
+    SmallViewportMin => "svmin",
+    SmallViewportBlockAxis => "svb",
+    SmallViewportInlineAxis => "svi",
+    LargeViewportHeight => "lvh",
+    LargeViewportWidth => "lvw",
+    LargeViewportMax => "lvmax",
+    LargeViewportMin => "lvmin",
+    LargeViewportBlockAxis => "lvb",
+    LargeViewportInlineAxis => "lvi",
+    DynamicViewportHeight => "dvh",
+    DynamicViewportWidth => "dvw",
+    DynamicViewportMax => "dvmax",
+    DynamicViewportMin => "dvmin",
+    DynamicViewportBlockAxis => "dvb",
+    DynamicViewportInlineAxis => "dvi",
 }
