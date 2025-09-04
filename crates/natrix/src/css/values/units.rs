@@ -56,10 +56,6 @@ macro_rules! define_length_enum {
     ($($variant:ident => $value:literal),+ $(,)?) => {
         /// A css `<length>` value,
         #[derive(Clone, Copy, PartialEq, Debug)]
-        #[cfg_attr(
-            all(test, not(target_arch = "wasm32")),
-            derive(proptest_derive::Arbitrary)
-        )]
         pub enum Length {
             $(
                 #[doc = $value]
@@ -74,6 +70,44 @@ macro_rules! define_length_enum {
                     $(Self::$variant(value) => (value, $value)),+
                 };
                 format!("{value}{suffix}")
+            }
+        }
+
+        // Manual Arbitrary implementation to avoid large nested unions produced
+        // by proptest_derive for big enums. We just generate:
+        //   - one f32
+        //   - one usize in 0..VARIANT_COUNT
+        // and map to the corresponding variant.
+        #[cfg(all(test, not(target_arch = "wasm32")))]
+        #[expect(clippy::arithmetic_side_effects, unused_assignments, reason="Tests")]
+        impl proptest::arbitrary::Arbitrary for Length {
+            type Parameters = ();
+            type Strategy = proptest::strategy::BoxedStrategy<Length>;
+
+            fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+                use proptest::prelude::*;
+
+                // Count variants at compile time.
+                const __VARIANT_COUNT: usize = 0 $(+ { let _ = stringify!($variant); 1 })+;
+
+                // Strategy: (f32, index) -> Length
+                (
+                    any::<f32>(),
+                    0usize .. __VARIANT_COUNT
+                )
+                    .prop_map(|(v, idx)| {
+                        // Map idx to variant without building a big match with explicit numeric literals.
+                        // O(#variants) but done only at generation time and remains flat.
+                        let mut i = idx;
+                        $(
+                            if i == 0 {
+                                return Length::$variant(v);
+                            }
+                            i -= 1;
+                        )+
+                        unreachable!("index out of range (variant mapping logic error)");
+                    })
+                    .boxed()
             }
         }
     };

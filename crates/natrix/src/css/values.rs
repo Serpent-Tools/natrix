@@ -10,10 +10,36 @@ use std::time::Duration;
 
 pub use animations::*;
 pub use colors::Color;
+pub use units::{Length, Percentage};
 
 pub use super::IntoCss;
+use crate::css::values::units::Angle;
 use crate::error_handling::{log_or_panic, log_or_panic_result};
 use crate::type_macros;
+
+/// Force a unwrap to happen at const time.
+/// If the value isnt a valid const expression this wont compile.
+///
+/// This is to allow you to use the various failable constructors with literal values
+/// without hawving to disable any lints you have enabled against unwraps/expects
+///
+/// ```
+/// natrix::const_unwrap!(natrix::css::values::Color::rgba(100, 100, 100, 0.5));
+/// ```
+/// ```compile_fail
+/// natrix::const_unwrap!(natrix::css::values::Color::rgba(100, 100, 100, 120.0));
+/// ```
+#[macro_export]
+macro_rules! const_unwrap {
+    ($value:expr) => {
+        const {
+            match $value {
+                Some(value) => value,
+                None => panic!("`const_unwrap! on None value"),
+            }
+        }
+    };
+}
 
 /// A css value thats valid in a property
 pub trait CssPropertyValue: IntoCss {
@@ -26,6 +52,10 @@ impl IntoCss for Duration {
     fn into_css(self) -> String {
         format!("{}ms", self.as_secs_f64())
     }
+}
+
+impl CssPropertyValue for Duration {
+    type Kind = Duration;
 }
 
 /// The type used in `CssPropertyValue` to signal a numeric, such as u8, i16, f32, etc.
@@ -469,62 +499,93 @@ define_enum! {
     }
 }
 
-define_enum! {
-    #[derive(Copy)]
-    enum LengthUnit,
-    "*",
-    "https://developer.mozilla.org/en-US/docs/Web/CSS/length",
-    {
-        CapitalHeight => "cap",
-        Character => "ch",
-        FontSize => "em",
-        Xheight => "ex",
-        IdealCharacter => "ic",
-        Lineheight => "lh",
-        RootCapHeight => "rcap",
-        RootCharacter => "rch",
-        RootFontSize => "rem",
-        RootXheight => "rex",
-        RootIdealCharacter => "ric",
-        RootLineheight => "rlh",
-        ContainerQueryWidth => "cqw",
-        ContainerQueryHeight => "cqh",
-        ContainerQueryInlineSize => "cqi",
-        ContainerQueryBlockSize => "cqb",
-        ContainerQueryMax => "cqmax",
-        ContainerQueryMin => "cqmin",
-        Pixel => "px",
-        CentiMeter => "cm",
-        Millimeter => "mm",
-        QuarterMillimeter => "Q",
-        Inch => "in",
-        Pica => "pc",
-        Point => "pt",
-        ViewportHeight => "vh",
-        ViewportWidth => "vw",
-        ViewportMax => "vmax",
-        ViewportMin => "vmin",
-        ViewportBlockAxis => "vb",
-        ViewportInlineAxis => "vi",
-        SmallViewportHeight => "svh",
-        SmallViewportWidth => "svw",
-        SmallViewportMax => "svmax",
-        SmallViewportMin => "svmin",
-        SmallViewportBlockAxis => "svb",
-        SmallViewportInlineAxis => "svi",
-        LargeViewportHeight => "lvh",
-        LargeViewportWidth => "lvw",
-        LargeViewportMax => "lvmax",
-        LargeViewportMin => "lvmin",
-        LargeViewportBlockAxis => "lvb",
-        LargeViewportInlineAxis => "lvi",
-        DynamicViewportHeight => "dvh",
-        DynamicViewportWidth => "dvw",
-        DynamicViewportMax => "dvmax",
-        DynamicViewportMin => "dvmin",
-        DynamicViewportBlockAxis => "dvb",
-        DynamicViewportInlineAxis => "dvi",
+/// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function>
+#[derive(Clone)]
+pub struct Filter(String);
+
+impl Filter {
+    /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/blur>
+    pub fn blur(value: impl CssPropertyValue<Kind = Length>) -> Self {
+        Self(format!("blur({})", value.into_css()))
     }
+
+    /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/brightness>
+    pub fn brightness(value: impl CssPropertyValue<Kind = Percentage>) -> Self {
+        Self(format!("brightness({})", value.into_css()))
+    }
+
+    /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/contrast>
+    pub fn contrast(value: impl CssPropertyValue<Kind = Percentage>) -> Self {
+        Self(format!("contrast({})", value.into_css()))
+    }
+
+    /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/drop-shadow>
+    pub fn drop_shadow(
+        x_offset: impl CssPropertyValue<Kind = Length>,
+        y_offset: impl CssPropertyValue<Kind = Length>,
+        blur: impl CssPropertyValue<Kind = Length>,
+        color: impl CssPropertyValue<Kind = Color>,
+    ) -> Self {
+        Self(format!(
+            "drop-shadow({} {} {} {})",
+            x_offset.into_css(),
+            y_offset.into_css(),
+            blur.into_css(),
+            color.into_css(),
+        ))
+    }
+
+    /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/grayscale>
+    pub fn grayscale(value: impl CssPropertyValue<Kind = Percentage>) -> Self {
+        Self(format!("grayscale({})", value.into_css()))
+    }
+
+    /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/hue-rotate>
+    pub fn hue_rotate(value: impl CssPropertyValue<Kind = Angle>) -> Self {
+        Self(format!("hue-rotate({})", value.into_css()))
+    }
+
+    /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/invert>
+    pub fn invert(value: impl CssPropertyValue<Kind = Percentage>) -> Self {
+        Self(format!("invert({})", value.into_css()))
+    }
+
+    /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/opacity>
+    pub fn opacity(value: impl CssPropertyValue<Kind = Percentage>) -> Self {
+        Self(format!("opacity({})", value.into_css()))
+    }
+
+    /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/saturate>
+    pub fn saturate(value: impl CssPropertyValue<Kind = Percentage>) -> Self {
+        Self(format!("saturate({})", value.into_css()))
+    }
+
+    /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/sepia>
+    pub fn sepia(value: impl CssPropertyValue<Kind = Percentage>) -> Self {
+        Self(format!("sepia({})", value.into_css()))
+    }
+}
+
+impl IntoCss for Filter {
+    fn into_css(self) -> String {
+        self.0
+    }
+}
+
+impl CssPropertyValue for Filter {
+    type Kind = Filter;
+}
+impl IntoCss for Vec<Filter> {
+    fn into_css(self) -> String {
+        self.into_iter()
+            .map(|filter| filter.0)
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+}
+
+impl CssPropertyValue for Vec<Filter> {
+    type Kind = Filter;
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
@@ -533,6 +594,30 @@ mod tests {
 
     use super::*;
     use crate::css::assert_valid_css;
+
+    macro_rules! test_filter {
+        ($func:ident($($arg:ident : $ty:ty),*)) => {
+            proptest! {
+                #[test]
+                fn $func($($arg: $ty),*) {
+                    let css = Filter::$func($($arg),*).into_css();
+                    let css = format!("h1 {{ backdrop-filter: {css}; }}");
+                    assert_valid_css(&css);
+                }
+            }
+        };
+    }
+
+    test_filter!(blur(length: Length));
+    test_filter!(brightness(value: Percentage));
+    test_filter!(contrast(value: Percentage));
+    test_filter!(drop_shadow(x_offset: Length, y_offset: Length, blur: Length, color: Color));
+    test_filter!(grayscale(value: Percentage));
+    test_filter!(hue_rotate(angle: Angle));
+    test_filter!(invert(value: Percentage));
+    test_filter!(opacity(value: Percentage));
+    test_filter!(saturate(value: Percentage));
+    test_filter!(sepia(value: Percentage));
 
     proptest! {
         #[test]
