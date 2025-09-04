@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use crate::css::IntoCss;
 use crate::css::keyframes::KeyFrame;
+use crate::css::values::CssPropertyValue;
 pub use crate::css::values::{
     AnimationDirection,
     AnimationFillMode,
@@ -129,4 +130,11 @@ impl IntoCss for Vec<Animation> {
             .collect::<Vec<_>>()
             .join(", ")
     }
+}
+
+impl CssPropertyValue for Animation {
+    type Kind = Animation;
+}
+impl CssPropertyValue for Vec<Animation> {
+    type Kind = Animation;
 }

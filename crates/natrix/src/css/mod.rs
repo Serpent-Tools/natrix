@@ -273,7 +273,7 @@ mod tests {
     mod test_collection {
         use crate::prelude::*;
 
-        const BUTTON_CLASS: crate::prelude::Class = crate::prelude::Class("btn"); // Consistent
+        const BUTTON_CLASS: crate::prelude::Class = crate::class!();
 
         crate::register_rule!(
             BUTTON_CLASS,

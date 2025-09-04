@@ -5,6 +5,7 @@ mod colors;
 pub mod units;
 
 use std::fmt::Write;
+use std::marker::PhantomData;
 use std::time::Duration;
 
 pub use animations::*;
@@ -14,13 +15,23 @@ pub use super::IntoCss;
 use crate::error_handling::{log_or_panic, log_or_panic_result};
 use crate::type_macros;
 
+/// A css value thats valid in a property
+pub trait CssPropertyValue: IntoCss {
+    /// The kind of value, this is used to enable some stuff like css variables.
+    /// But also allow us to easialy do things like declare a property supports numeics.
+    type Kind;
+}
+
 impl IntoCss for Duration {
     fn into_css(self) -> String {
         format!("{}ms", self.as_secs_f64())
     }
 }
 
-/// generate `ToAttribute` for a numeric
+/// The type used in `CssPropertyValue` to signal a numeric, such as u8, i16, f32, etc.
+pub struct KindNumeric;
+
+/// generate css traits for a numeric
 macro_rules! impl_numerics {
     ($t:ident, $fmt:ident, $name:ident) => {
         impl IntoCss for $t {
@@ -31,6 +42,9 @@ macro_rules! impl_numerics {
                 result.to_string()
             }
         }
+        impl CssPropertyValue for $t {
+            type Kind = KindNumeric;
+        }
     };
 }
 type_macros::numerics!(impl_numerics);
@@ -39,6 +53,9 @@ impl<A: IntoCss, B: IntoCss> IntoCss for (A, B) {
     fn into_css(self) -> String {
         format!("{} {}", self.0.into_css(), self.1.into_css())
     }
+}
+impl<A: CssPropertyValue, B: CssPropertyValue> CssPropertyValue for (A, B) {
+    type Kind = (A::Kind, B::Kind);
 }
 
 /// Define a `ToCssValue` enum
@@ -89,6 +106,10 @@ macro_rules! define_enum {
                     }
                 }
             }
+
+            impl CssPropertyValue for $name {
+                type Kind = $name;
+            }
         }
     }
 }
@@ -111,22 +132,47 @@ macro_rules! zero_sized_value {
                     $value.into()
                 }
             }
+            impl CssPropertyValue for $name {
+                type Kind = $name;
+            }
         }
     };
 }
 
-define_enum! {
-    #[derive(Copy)]
-    enum WideKeyword,
-    "*",
-    "https://developer.mozilla.org/docs/Web/CSS/CSS_Values_and_Units/CSS_data_types#css-wide_keywords",
-    {
-        Initial => "initial",
-        Inherit => "inherit",
-        Revert => "revert",
-        RevertLayer => "revert-layer",
-        Unset => "unset",
+/// A wide keyword is valid in every property.
+/// We make it generic to make the trait system work out.
+///
+/// <https://developer.mozilla.org/docs/Web/CSS/CSS_Values_and_Units/CSS_data_types#css-wide_keywords>
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum WideKeyword<K> {
+    /// `initial`
+    Initial,
+    /// `inherit`
+    Inherit,
+    /// `revert`
+    Revert,
+    /// `revert-layer`
+    RevertLayer,
+    /// `unset`
+    Unset,
+    /// This is purely here for the phantom data
+    Phantom(PhantomData<K>, std::convert::Infallible),
+}
+impl<K> IntoCss for WideKeyword<K> {
+    #[inline]
+    fn into_css(self) -> String {
+        match self {
+            Self::Initial => "initial".into(),
+            Self::Inherit => "inherit".into(),
+            Self::Revert => "revert".into(),
+            Self::RevertLayer => "revert-layer".into(),
+            Self::Unset => "unset".into(),
+        }
     }
+}
+
+impl<K> CssPropertyValue for WideKeyword<K> {
+    type Kind = K;
 }
 
 define_enum! {
@@ -209,6 +255,10 @@ impl<T: IntoCss> IntoCss for OverflowPosition<T> {
 
         format!("{prefix} {}", value.into_css())
     }
+}
+
+impl<T: CssPropertyValue> CssPropertyValue for OverflowPosition<T> {
+    type Kind = Self;
 }
 
 define_enum!(
@@ -476,10 +526,6 @@ define_enum! {
         DynamicViewportInlineAxis => "dvi",
     }
 }
-
-/// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function>
-#[derive(Clone)]
-pub enum Filter {}
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {

@@ -59,6 +59,7 @@ pub mod prelude {
     pub use natrix_macros::State;
 
     pub use super::access::{Downgrade, Getter, Project, Ref, RefClosure};
+    pub use super::css::property::Variable;
     pub use super::css::selectors::{
         Class,
         Id,
@@ -74,7 +75,7 @@ pub mod prelude {
 }
 
 pub use dom::Element;
-pub use natrix_macros::{State, asset, data, format_elements};
+pub use natrix_macros::{State, asset, format_elements};
 pub use reactivity::mount::mount;
 pub use reactivity::state::{EventCtx, RenderCtx};
 

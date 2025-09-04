@@ -1,8 +1,10 @@
 //! Css properties
 
+use std::marker::PhantomData;
+
 use super::values;
 use crate::css::selectors::IntoSelectorList;
-use crate::css::values::IntoCss;
+use crate::css::values::{CssPropertyValue, IntoCss};
 
 /// A collection of css rules
 #[must_use]
@@ -75,8 +77,8 @@ impl RuleBody {
     pub fn set<V, P>(mut self, property: P, value: V) -> Self
     where
         P: Property,
-        P: Supports<V>,
-        V: values::IntoCss,
+        V: values::CssPropertyValue,
+        P: Supports<V::Kind>,
     {
         self.properties.push((property.name(), value.into_css()));
         self
@@ -104,12 +106,66 @@ impl IntoCss for RuleBody {
     }
 }
 
+/// A css variable lets you both re-use values, and more robustly change css values at runtime that
+/// are used across styles.
+/// They also allow easier refactor, for example instead of setting a background color directly you
+/// can set a css variable, thats used in the background, so if you wanna edit the css to
+/// automatically a use a gradient of the background as the border you dont have to update the
+/// actual component.
+///
+/// Css variables should ideally be defined by the `css_var!` macro
+#[derive(Clone, Copy)]
+pub struct Variable<K> {
+    /// The unique name for this css variable.
+    name: &'static str,
+    /// A phantomdata to hold the type this variable is for
+    type_: PhantomData<K>,
+}
+
+impl<K> Variable<K> {
+    /// Create a new variable with the given name, generally prefer `css_var!` macro over this.
+    /// (This is called by the macro.)
+    #[must_use]
+    pub const fn new(name: &'static str) -> Self {
+        Self {
+            name,
+            type_: PhantomData,
+        }
+    }
+}
+
+/// Create a css variable with the given **Kind**
+/// Such as `Color`, or `KindNumeric`.
+#[macro_export]
+macro_rules! css_var {
+    () => {
+        $crate::css::property::Variable::new($crate::unique_str!())
+    };
+    ($kind:ty) => {
+        $crate::css::property::Variable::<$kind>::new($crate::unique_str!())
+    };
+}
+
+impl<K> IntoCss for Variable<K> {
+    fn into_css(self) -> String {
+        format!("var(--{})", super::as_css_identifier(self.name))
+    }
+}
+
+impl<K> Property for Variable<K> {
+    fn name(self) -> &'static str {
+        self.name
+    }
+}
+
+impl<K> CssPropertyValue for Variable<K> {
+    type Kind = K;
+}
+impl<K> Supports<K> for Variable<K> {}
+
 /// Define a property with a specific supported value
 macro_rules! property {
     ($name:ident => $target:literal) => {
-        #[cfg(test)]
-        static_assertions::assert_impl_all!($name: Supports<values::WideKeyword>);
-
         pastey::paste! {
             #[doc = "`" $target "` property."]
             #[doc = ""]
@@ -130,7 +186,8 @@ macro_rules! property {
                 #[doc = "<https://developer.mozilla.org/docs/Web/CSS/" $target ">"]
                 #[inline]
                 pub fn [< $name:snake >]<V>(self, value: V) -> Self
-                    where $name: Supports<V>, V: values::IntoCss
+                    where $name: Supports<V::Kind>,
+                          V: values::CssPropertyValue,
                 {
                     self.set($name, value)
                 }
@@ -165,7 +222,13 @@ macro_rules! support {
     };
 }
 
-impl<P: Property> Supports<values::WideKeyword> for P {}
+/// Generate the support deglation without generating the test
+/// Used for types that include generic kinds.
+macro_rules! support_no_test {
+    ($prop:ident, $value:ty) => {
+        impl Supports<$value> for $prop {}
+    };
+}
 
 property!(AlignContent => "align-content");
 support!(AlignContent, values::Normal, normal);
@@ -203,21 +266,20 @@ support!(
 );
 
 property!(All => "all");
-test_property!(All, values::WideKeyword, wide);
+support_no_test!(All, ());
 
 property!(Animation => "animation");
 support!(Animation, values::Animation, single);
-support!(Animation, Vec<values::Animation>, list);
 
 property!(Appearance => "appearance");
 support!(Appearance, values::Auto, auto);
 support!(Appearance, values::Appearance, special);
 
 property!(AspectRatio => "aspect-ratio");
-support!(AspectRatio, f32, f32);
-support!(AspectRatio, f64, f64);
+support_no_test!(AspectRatio, values::KindNumeric);
+test_property!(AspectRatio, f32, f32);
 support!(AspectRatio, values::Auto, auto);
-support!(AspectRatio, (values::Auto, f32), auto_f32);
-support!(AspectRatio, (values::Auto, f64), auto_f64);
-support!(AspectRatio, (f32, values::Auto), f32_auto);
-support!(AspectRatio, (f64, values::Auto), f64_auto);
+support_no_test!(AspectRatio, (values::Auto, values::KindNumeric));
+test_property!(AspectRatio, (values::Auto, f32), auto_f32);
+support_no_test!(AspectRatio, (values::KindNumeric, values::Auto));
+test_property!(AspectRatio, (f32, values::Auto), f32_auto);

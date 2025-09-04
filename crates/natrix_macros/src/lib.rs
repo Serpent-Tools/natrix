@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::{fs, io};
 
 use proc_macro2::TokenStream;
-use quote::{ToTokens, format_ident, quote};
+use quote::{ToTokens, quote};
 
 /// Create a array of elements based on the format string.
 /// The start of the macro is a closure argument list, which should generally be `|ctx: R<Self>|`
