@@ -45,8 +45,10 @@ impl HookKey {
 }
 
 /// The value of a slot
+#[derive(Default)]
 enum SlotValue<T> {
     /// The slot doesnt contain a value
+    #[default]
     Empty,
     /// The slot is in use, but the value is moved out atm
     InUse,
@@ -62,12 +64,6 @@ enum SlotValue<T> {
         /// The insertion order
         order: InsertionOrder,
     },
-}
-
-impl<T> Default for SlotValue<T> {
-    fn default() -> Self {
-        Self::Empty
-    }
 }
 
 /// A slot in the slotmap
