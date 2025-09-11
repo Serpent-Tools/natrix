@@ -47,6 +47,14 @@ pub enum Color {
 }
 
 impl Color {
+    /// Fully transparent color
+    pub const TRANSPARENT: Self = Color::Rgb {
+        red: 0,
+        green: 0,
+        blue: 0,
+        alpha: 0.0,
+    };
+
     /// Set the alpha and return a new color, or None if alpha is out of range [0, 1]
     #[must_use]
     pub const fn with_alpha(self, alpha: f32) -> Option<Self> {
@@ -111,20 +119,8 @@ impl Color {
 
     /// Hsl with opaque alpha. Constructs directly.
     #[inline]
-    pub const fn hsl(hue: u16, saturation: u8, lightness: u8) -> Self {
-        Self::Hsl {
-            hue,
-            saturation,
-            lightness,
-            alpha: 1.0,
-        }
-    }
-
-    /// Hsl with a given alpha. Returns None if any component is out of range.
-    /// Valid ranges: hue 0..=360, saturation 0..=100, lightness 0..=100, alpha 0.0..=1.0
-    #[inline]
     #[must_use]
-    pub const fn hsla(hue: u16, saturation: u8, lightness: u8, alpha: f32) -> Option<Self> {
+    pub const fn hsl(hue: u16, saturation: u8, lightness: u8) -> Option<Self> {
         if hue > 360 {
             return None;
         }
@@ -135,25 +131,29 @@ impl Color {
             return None;
         }
 
-        Self::hsl(hue, saturation, lightness).with_alpha(alpha)
+        Some(Self::Hsl {
+            hue,
+            saturation,
+            lightness,
+            alpha: 1.0,
+        })
+    }
+
+    /// Hsl with a given alpha. Returns None if any component is out of range.
+    /// Valid ranges: hue 0..=360, saturation 0..=100, lightness 0..=100, alpha 0.0..=1.0
+    #[inline]
+    #[must_use]
+    pub const fn hsla(hue: u16, saturation: u8, lightness: u8, alpha: f32) -> Option<Self> {
+        let Some(res) = Self::hsl(hue, saturation, lightness) else {
+            return None;
+        };
+        res.with_alpha(alpha)
     }
 
     /// Oklch with opaque alpha. Constructs directly.
     #[inline]
-    pub const fn oklch(lightness: f32, chroma: f32, hue: f32) -> Self {
-        Self::Oklch {
-            lightness,
-            chroma,
-            hue,
-            alpha: 1.0,
-        }
-    }
-
-    /// Oklch with a given alpha. Returns None if any component is out of range.
-    /// Valid ranges: lightness 0.0..=1.0, chroma 0.0..=1.0, hue 0.0..=1.0, alpha 0.0..=1.0
-    #[inline]
     #[must_use]
-    pub const fn oklch_a(lightness: f32, chroma: f32, hue: f32, alpha: f32) -> Option<Self> {
+    pub const fn oklch(lightness: f32, chroma: f32, hue: f32) -> Option<Self> {
         if !(lightness >= 0.0 && lightness <= 1.0) {
             return None;
         }
@@ -164,7 +164,23 @@ impl Color {
             return None;
         }
 
-        Self::oklch(lightness, chroma, hue).with_alpha(alpha)
+        Some(Self::Oklch {
+            lightness,
+            chroma,
+            hue,
+            alpha: 1.0,
+        })
+    }
+
+    /// Oklch with a given alpha. Returns None if any component is out of range.
+    /// Valid ranges: lightness 0.0..=1.0, chroma 0.0..=1.0, hue 0.0..=1.0, alpha 0.0..=1.0
+    #[inline]
+    #[must_use]
+    pub const fn oklch_a(lightness: f32, chroma: f32, hue: f32, alpha: f32) -> Option<Self> {
+        let Some(res) = Self::oklch(lightness, chroma, hue) else {
+            return None;
+        };
+        res.with_alpha(alpha)
     }
 }
 
@@ -258,6 +274,19 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn invalid_colors() {
+        assert!(Color::rgba(0, 0, 0, 2.0).is_none());
+        assert!(Color::rgba(0, 0, 0, -10.0).is_none());
+        assert!(Color::rgb(0, 0, 0).with_alpha(-10.0).is_none());
+        assert!(Color::hsl(400, 0, 0).is_none());
+        assert!(Color::hsl(0, 200, 0).is_none());
+        assert!(Color::hsl(0, 0, 200).is_none());
+        assert!(Color::oklch(2.0, 0., 0.).is_none());
+        assert!(Color::oklch(0., 2.0, 0.).is_none());
+        assert!(Color::oklch(0., 0., 2.0).is_none());
+    }
+
+    #[test]
     fn snapshot_rgb_colors() {
         assert_snapshot!("rgb_red", Color::rgb(255, 0, 0).into_css());
         assert_snapshot!("rgb_green", Color::rgb(0, 255, 0).into_css());
@@ -284,10 +313,22 @@ pub(crate) mod tests {
 
     #[test]
     fn snapshot_hsl_colors() {
-        assert_snapshot!("hsl_red", Color::hsl(0, 100, 50).into_css());
-        assert_snapshot!("hsl_green", Color::hsl(120, 100, 50).into_css());
-        assert_snapshot!("hsl_blue", Color::hsl(240, 100, 50).into_css());
-        assert_snapshot!("hsl_gray", Color::hsl(0, 0, 50).into_css());
+        assert_snapshot!(
+            "hsl_red",
+            crate::const_unwrap!(Color::hsl(0, 100, 50)).into_css()
+        );
+        assert_snapshot!(
+            "hsl_green",
+            crate::const_unwrap!(Color::hsl(120, 100, 50)).into_css()
+        );
+        assert_snapshot!(
+            "hsl_blue",
+            crate::const_unwrap!(Color::hsl(240, 100, 50)).into_css()
+        );
+        assert_snapshot!(
+            "hsl_gray",
+            crate::const_unwrap!(Color::hsl(0, 0, 50)).into_css()
+        );
     }
 
     #[test]
@@ -310,15 +351,15 @@ pub(crate) mod tests {
     fn snapshot_oklch_colors() {
         assert_snapshot!(
             "oklch_mid_lightness",
-            Color::oklch(0.5, 0.1, 0.5).into_css()
+            crate::const_unwrap!(Color::oklch(0.5, 0.1, 0.5)).into_css()
         );
         assert_snapshot!(
             "oklch_low_lightness",
-            Color::oklch(0.1, 0.2, 0.8).into_css()
+            crate::const_unwrap!(Color::oklch(0.1, 0.2, 0.8)).into_css()
         );
         assert_snapshot!(
             "oklch_high_lightness",
-            Color::oklch(0.9, 0.05, 0.2).into_css()
+            crate::const_unwrap!(Color::oklch(0.9, 0.05, 0.2)).into_css()
         );
     }
 
@@ -346,11 +387,13 @@ pub(crate) mod tests {
         );
         assert_snapshot!(
             "with_alpha_hsl",
-            crate::const_unwrap!(Color::hsl(90, 50, 25).with_alpha(0.25)).into_css()
+            crate::const_unwrap!(crate::const_unwrap!(Color::hsl(90, 50, 25)).with_alpha(0.25))
+                .into_css()
         );
         assert_snapshot!(
             "with_alpha_oklch",
-            crate::const_unwrap!(Color::oklch(0.3, 0.1, 0.6).with_alpha(0.9)).into_css()
+            crate::const_unwrap!(crate::const_unwrap!(Color::oklch(0.3, 0.1, 0.6)).with_alpha(0.9))
+                .into_css()
         );
     }
 
