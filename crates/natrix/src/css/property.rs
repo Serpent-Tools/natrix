@@ -283,3 +283,7 @@ support_no_test!(AspectRatio, (values::Auto, values::KindNumeric));
 test_property!(AspectRatio, (values::Auto, f32), auto_f32);
 support_no_test!(AspectRatio, (values::KindNumeric, values::Auto));
 test_property!(AspectRatio, (f32, values::Auto), f32_auto);
+
+property!(BackdropFilter => "backdrop-filter");
+support!(BackdropFilter, values::Filter, filter);
+test_property!(BackdropFilter, Vec<values::Filter>, filter_vec);

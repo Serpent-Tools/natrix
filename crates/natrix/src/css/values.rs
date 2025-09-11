@@ -500,7 +500,7 @@ define_enum! {
 }
 
 /// <https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function>
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Filter(String);
 
 impl Filter {
@@ -590,40 +590,64 @@ impl CssPropertyValue for Vec<Filter> {
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
-    use proptest::proptest;
+    use proptest::prelude::*;
 
     use super::*;
     use crate::css::assert_valid_css;
 
-    macro_rules! test_filter {
-        ($func:ident($($arg:ident : $ty:ty),*)) => {
-            proptest! {
-                #[test]
-                fn $func($($arg: $ty),*) {
-                    let css = Filter::$func($($arg),*).into_css();
-                    let css = format!("h1 {{ backdrop-filter: {css}; }}");
-                    assert_valid_css(&css);
-                }
-            }
-        };
-    }
+    impl Arbitrary for Filter {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
 
-    test_filter!(blur(length: Length));
-    test_filter!(brightness(value: Percentage));
-    test_filter!(contrast(value: Percentage));
-    test_filter!(drop_shadow(x_offset: Length, y_offset: Length, blur: Length, color: Color));
-    test_filter!(grayscale(value: Percentage));
-    test_filter!(hue_rotate(angle: Angle));
-    test_filter!(invert(value: Percentage));
-    test_filter!(opacity(value: Percentage));
-    test_filter!(saturate(value: Percentage));
-    test_filter!(sepia(value: Percentage));
+        fn arbitrary_with((): ()) -> Self::Strategy {
+            // One strategy per constructor; adapt names if yours differ.
+            let blur = any::<Length>().prop_map(Filter::blur);
+            let brightness = any::<Percentage>().prop_map(Filter::brightness);
+            let contrast = any::<Percentage>().prop_map(Filter::contrast);
+
+            let drop_shadow = (
+                any::<Length>(),
+                any::<Length>(),
+                any::<Length>(),
+                any::<Color>(),
+            )
+                .prop_map(|(x, y, b, c)| Filter::drop_shadow(x, y, b, c));
+
+            let grayscale = any::<Percentage>().prop_map(Filter::grayscale);
+            let hue_rotate = any::<Angle>().prop_map(Filter::hue_rotate);
+            let invert = any::<Percentage>().prop_map(Filter::invert);
+            let opacity = any::<Percentage>().prop_map(Filter::opacity);
+            let saturate = any::<Percentage>().prop_map(Filter::saturate);
+            let sepia = any::<Percentage>().prop_map(Filter::sepia);
+
+            proptest::prop_oneof![
+                blur,
+                brightness,
+                contrast,
+                drop_shadow,
+                grayscale,
+                hue_rotate,
+                invert,
+                opacity,
+                saturate,
+                sepia,
+            ]
+            .boxed()
+        }
+    }
 
     proptest! {
         #[test]
         fn duration_into_css(duration: Duration) {
             let css = duration.into_css();
             let css = format!("h1 {{ animation-duration: {css}; }}");
+            assert_valid_css(&css);
+        }
+
+        #[test]
+        fn filter_into_css(filter: Filter) {
+            let css = filter.into_css();
+            let css = format!("h1 {{ backdrop-filter: {css}; }}");
             assert_valid_css(&css);
         }
     }
