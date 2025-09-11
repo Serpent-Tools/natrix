@@ -417,6 +417,10 @@ impl IntoCss for EasingFunction {
     }
 }
 
+impl CssPropertyValue for EasingFunction {
+    type Kind = EasingFunction;
+}
+
 /// The `animation-iteration-count` value.
 /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-iteration-count>
 #[derive(Debug, Clone, Copy)]
@@ -445,6 +449,10 @@ impl IntoCss for AnimationIterationCount {
             Self::Finite(value) => value.to_string(),
         }
     }
+}
+
+impl CssPropertyValue for AnimationIterationCount {
+    type Kind = AnimationIterationCount;
 }
 
 define_enum! {

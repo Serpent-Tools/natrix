@@ -2,6 +2,7 @@
 
 use super::values::IntoCss;
 use crate::css::prelude::RuleBody;
+use crate::css::values::CssPropertyValue;
 use crate::css::values::units::Percentage;
 
 /// The name of a keyframe
@@ -12,6 +13,10 @@ impl IntoCss for KeyFrame {
     fn into_css(self) -> String {
         super::as_css_identifier(self.0)
     }
+}
+
+impl CssPropertyValue for KeyFrame {
+    type Kind = KeyFrame;
 }
 
 /// A keyframe definition

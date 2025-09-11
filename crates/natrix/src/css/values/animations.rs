@@ -13,112 +13,127 @@ pub use crate::css::values::{
     EasingFunction,
 };
 
-/// A css animation
+/// A css animation with all value components stored as raw CSS strings.
 #[must_use]
 #[derive(Debug, Clone)]
-#[cfg_attr(
-    all(test, not(target_arch = "wasm32")),
-    derive(proptest_derive::Arbitrary)
-)]
 pub struct Animation {
-    /// The keyframe of this animation
-    #[cfg_attr(
-        all(test, not(target_arch = "wasm32")),
-        proptest(value = r#"KeyFrame("slide")"#)
-    )]
-    pub name: KeyFrame,
-    /// The duration of the animation
-    pub duration: Duration,
-    /// The easing function to use
-    pub easing: EasingFunction,
-    /// The delay before starting the animation
-    pub delay: Duration,
-    /// The amount of times the animation repeats, defaults to 1
-    pub iteration_count: AnimationIterationCount,
-    /// The direction the animation plays.
-    pub direction: AnimationDirection,
-    /// The fill mode for the animation
-    pub fill_mode: AnimationFillMode,
-    /// Is the animation paused or playing
-    pub state: AnimationState,
+    /// The animation-name
+    name: String,
+    /// The duration
+    duration: String,
+    /// The timing / easing function
+    easing: String,
+    /// The delay before it starts
+    delay: String,
+    /// The iteration count
+    iteration_count: String,
+    /// The direction
+    direction: String,
+    /// The fill-mode
+    fill_mode: String,
+    /// The play state
+    state: String,
 }
 
 impl KeyFrame {
-    /// create a default `Animation` for this keyframe using the given duration
-    pub fn animation(self, duration: Duration) -> Animation {
+    /// Create a default `Animation` for this keyframe using the given duration.
+    pub fn animation(self, duration: impl CssPropertyValue<Kind = Duration>) -> Animation {
         Animation::new(self, duration)
     }
 }
 
 impl Animation {
     /// Create new animation for the given keyframe with default values.
-    pub fn new(name: KeyFrame, duration: Duration) -> Self {
+    pub fn new(
+        name: impl CssPropertyValue<Kind = KeyFrame>,
+        duration: impl CssPropertyValue<Kind = Duration>,
+    ) -> Self {
         Self {
-            name,
-            duration,
-            easing: EasingFunction::default(),
-            delay: Duration::ZERO,
-            iteration_count: AnimationIterationCount::default(),
-            direction: AnimationDirection::default(),
-            fill_mode: AnimationFillMode::default(),
-            state: AnimationState::default(),
+            name: name.into_css(),
+            duration: duration.into_css(),
+            easing: EasingFunction::default().into_css(),
+            delay: Duration::ZERO.into_css(),
+            iteration_count: AnimationIterationCount::default().into_css(),
+            direction: AnimationDirection::default().into_css(),
+            fill_mode: AnimationFillMode::default().into_css(),
+            state: AnimationState::default().into_css(),
         }
     }
+
+    /// Override / set the animation name.
+    pub fn name(mut self, name: impl CssPropertyValue<Kind = KeyFrame>) -> Self {
+        self.name = name.into_css();
+        self
+    }
+
     /// Set the time before the animation starts.
-    pub fn delay(mut self, delay: Duration) -> Self {
-        self.delay = delay;
+    pub fn delay(mut self, delay: impl CssPropertyValue<Kind = Duration>) -> Self {
+        self.delay = delay.into_css();
         self
     }
 
-    /// Set the easing function
-    pub fn easing(mut self, function: EasingFunction) -> Self {
-        self.easing = function;
+    /// Set the duration.
+    pub fn duration(mut self, duration: impl CssPropertyValue<Kind = Duration>) -> Self {
+        self.duration = duration.into_css();
         self
     }
 
-    /// Set the iteration count
-    pub fn iteration_count(mut self, count: f32) -> Self {
-        self.iteration_count = AnimationIterationCount::Finite(count);
+    /// Set the easing / timing function.
+    pub fn easing(mut self, function: impl CssPropertyValue<Kind = EasingFunction>) -> Self {
+        self.easing = function.into_css();
         self
     }
 
-    /// Make this animation repeat forever
+    /// Set the iteration count.
+    pub fn iteration_count(
+        mut self,
+        count: impl CssPropertyValue<Kind = AnimationIterationCount>,
+    ) -> Self {
+        self.iteration_count = count.into_css();
+        self
+    }
+
+    /// Convenience: make this animation repeat forever.
     pub fn infinite(mut self) -> Self {
-        self.iteration_count = AnimationIterationCount::Infinite;
+        self.iteration_count = AnimationIterationCount::Infinite.into_css();
         self
     }
 
-    /// Set the direction of the animation
-    pub fn direction(mut self, direction: AnimationDirection) -> Self {
-        self.direction = direction;
+    /// Set the direction of the animation.
+    pub fn direction(
+        mut self,
+        direction: impl CssPropertyValue<Kind = AnimationDirection>,
+    ) -> Self {
+        self.direction = direction.into_css();
         self
     }
 
-    /// Set the animation fill-mode
-    pub fn fill_mode(mut self, mode: AnimationFillMode) -> Self {
-        self.fill_mode = mode;
+    /// Set the animation fill-mode.
+    pub fn fill_mode(mut self, mode: impl CssPropertyValue<Kind = AnimationFillMode>) -> Self {
+        self.fill_mode = mode.into_css();
         self
     }
 
-    /// Set whether the animation is running or not
-    pub fn state(mut self, state: AnimationState) -> Self {
-        self.state = state;
+    /// Set whether the animation is running or not.
+    pub fn state(mut self, state: impl CssPropertyValue<Kind = AnimationState>) -> Self {
+        self.state = state.into_css();
         self
     }
 }
 
 impl IntoCss for Animation {
     fn into_css(self) -> String {
+        // Order: duration | timing-function | delay | iteration-count | direction | fill-mode | play-state | name
         format!(
             "{} {} {} {} {} {} {} {}",
-            self.duration.into_css(),
-            self.easing.into_css(),
-            self.delay.into_css(),
-            self.iteration_count.into_css(),
-            self.direction.into_css(),
-            self.fill_mode.into_css(),
-            self.state.into_css(),
-            self.name.into_css(),
+            self.duration,
+            self.easing,
+            self.delay,
+            self.iteration_count,
+            self.direction,
+            self.fill_mode,
+            self.state,
+            self.name,
         )
     }
 }
@@ -137,4 +152,40 @@ impl CssPropertyValue for Animation {
 }
 impl CssPropertyValue for Vec<Animation> {
     type Kind = Animation;
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod arbitrary_impl {
+    use proptest::prelude::*;
+
+    use super::*;
+
+    impl Arbitrary for Animation {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+
+        fn arbitrary_with((): Self::Parameters) -> Self::Strategy {
+            (
+                any::<Duration>(), // duration
+                any::<EasingFunction>(),
+                any::<Duration>(), // delay
+                any::<AnimationIterationCount>(),
+                any::<AnimationDirection>(),
+                any::<AnimationFillMode>(),
+                any::<AnimationState>(),
+            )
+                .prop_map(
+                    |(duration, easing, delay, iteration_count, direction, fill_mode, state)| {
+                        Animation::new(KeyFrame("slide"), duration)
+                            .easing(easing)
+                            .delay(delay)
+                            .iteration_count(iteration_count)
+                            .direction(direction)
+                            .fill_mode(fill_mode)
+                            .state(state)
+                    },
+                )
+                .boxed()
+        }
+    }
 }
