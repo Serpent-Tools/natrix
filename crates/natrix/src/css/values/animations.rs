@@ -13,26 +13,28 @@ pub use crate::css::values::{
     EasingFunction,
 };
 
-/// A css animation with all value components stored as raw CSS strings.
-#[must_use]
-#[derive(Debug, Clone)]
-pub struct Animation {
-    /// The animation-name
-    name: String,
-    /// The duration
-    duration: String,
-    /// The timing / easing function
-    easing: String,
-    /// The delay before it starts
-    delay: String,
-    /// The iteration count
-    iteration_count: String,
-    /// The direction
-    direction: String,
-    /// The fill-mode
-    fill_mode: String,
-    /// The play state
-    state: String,
+super::define_css_shorthand! {
+    /// A css animation
+    pub struct Animation {
+        /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-name>
+        name: String,
+        {
+            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-duration>
+            duration: Duration,
+            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-easing>
+            easing: EasingFunction,
+            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-delay>
+            delay: Duration,
+            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-iteration-count>
+            iteration_count: AnimationIterationCount,
+            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-direction>
+            direction: AnimationDirection,
+            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-fill-mode>
+            fill_mode: AnimationFillMode,
+            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-state>
+            state: AnimationState,
+        }
+    }
 }
 
 impl KeyFrame {
@@ -59,71 +61,10 @@ impl Animation {
             state: AnimationState::default().into_css(),
         }
     }
-
-    /// Override / set the animation name.
-    pub fn name(mut self, name: impl CssPropertyValue<Kind = KeyFrame>) -> Self {
-        self.name = name.into_css();
-        self
-    }
-
-    /// Set the time before the animation starts.
-    pub fn delay(mut self, delay: impl CssPropertyValue<Kind = Duration>) -> Self {
-        self.delay = delay.into_css();
-        self
-    }
-
-    /// Set the duration.
-    pub fn duration(mut self, duration: impl CssPropertyValue<Kind = Duration>) -> Self {
-        self.duration = duration.into_css();
-        self
-    }
-
-    /// Set the easing / timing function.
-    pub fn easing(mut self, function: impl CssPropertyValue<Kind = EasingFunction>) -> Self {
-        self.easing = function.into_css();
-        self
-    }
-
-    /// Set the iteration count.
-    pub fn iteration_count(
-        mut self,
-        count: impl CssPropertyValue<Kind = AnimationIterationCount>,
-    ) -> Self {
-        self.iteration_count = count.into_css();
-        self
-    }
-
-    /// Convenience: make this animation repeat forever.
-    pub fn infinite(mut self) -> Self {
-        self.iteration_count = AnimationIterationCount::Infinite.into_css();
-        self
-    }
-
-    /// Set the direction of the animation.
-    pub fn direction(
-        mut self,
-        direction: impl CssPropertyValue<Kind = AnimationDirection>,
-    ) -> Self {
-        self.direction = direction.into_css();
-        self
-    }
-
-    /// Set the animation fill-mode.
-    pub fn fill_mode(mut self, mode: impl CssPropertyValue<Kind = AnimationFillMode>) -> Self {
-        self.fill_mode = mode.into_css();
-        self
-    }
-
-    /// Set whether the animation is running or not.
-    pub fn state(mut self, state: impl CssPropertyValue<Kind = AnimationState>) -> Self {
-        self.state = state.into_css();
-        self
-    }
 }
 
 impl IntoCss for Animation {
     fn into_css(self) -> String {
-        // Order: duration | timing-function | delay | iteration-count | direction | fill-mode | play-state | name
         format!(
             "{} {} {} {} {} {} {} {}",
             self.duration,

@@ -17,6 +17,37 @@ use crate::css::values::units::Angle;
 use crate::error_handling::{log_or_panic, log_or_panic_result};
 use crate::type_macros;
 
+/// Define a css shorthand property.
+/// auto creating the setters, and allowing non-setter based fields.
+macro_rules! define_css_shorthand {
+    (
+        $(#[$meta:meta])*
+        pub struct
+        $name:ident {
+            $(#[$($d_custom:meta)*] $f_custom_n:ident : $f_custom_t:ty),* $(,)? { $(#[$($d:meta)*] $f_n:ident : $f_t:ty),* $(,)? }
+        }
+    ) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug)]
+        #[must_use]
+        pub struct $name {
+            $(#[$($d_custom)*] $f_custom_n: $f_custom_t),*,
+            $(#[$($d)*] $f_n: String),*
+        }
+
+        impl $name {
+            $(
+            #[$($d)*]
+            pub fn $f_n(mut self, value: impl CssPropertyValue<Kind = $f_t>) -> Self {
+                self.$f_n = value.into_css();
+                self
+            }
+        )*
+        }
+    };
+}
+use define_css_shorthand;
+
 /// Force a unwrap to happen at const time.
 /// If the value isnt a valid const expression this wont compile.
 ///
