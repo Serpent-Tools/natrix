@@ -1,0 +1,67 @@
+name: Upload test results
+
+on:
+  workflow_run:
+    workflows: ["Tests and lints"]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  upload:
+    if: github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve PR number
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            // Prefer PR info embedded in the workflow_run payload
+            if (run.pull_requests && run.pull_requests.length > 0) {
+              core.setOutput('number', String(run.pull_requests[0].number));
+            } else {
+              // Fallback: find PR by commit SHA
+              const {owner, repo} = context.repo;
+              const {data} = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner, repo, commit_sha: run.head_sha
+              });
+              core.setOutput('number', data[0]?.number ? String(data[0].number) : '');
+            }
+
+      - name: Download report artifact
+        if: steps.pr.outputs.number != ''
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          run_id: ${{ github.event.workflow_run.id }}
+          name: test-report
+          path: ./report
+
+      - name: Deploy preview to Cloudflare Pages
+        if: steps.pr.outputs.number != ''
+        id: pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: natrix-test-result
+          directory: ./report
+          branch: pr-${{ steps.pr.outputs.number }}-${{ github.event.workflow_run.head_sha }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on PR with preview URL
+        if: steps.pr.outputs.number != '' && steps.pages.outputs.url != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: test-report-preview
+          number: ${{ steps.pr.outputs.number }}
+          message: |
+            Test report: ${{ steps.pages.outputs.url }}
+
+      - name: Add to job summary
+        if: steps.pages.outputs.url != ''
+        run: |
+          echo 'Test report preview: ${{ steps.pages.outputs.url }}' >> $GITHUB_STEP_SUMMARY

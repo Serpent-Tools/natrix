@@ -139,8 +139,8 @@ pub(crate) struct TestResult {
 
 impl TestResult {
     /// Convert test result to a directory containing the result file
-    pub(crate) fn into_file(self, client: &Query) -> Result<Directory> {
-        let content = serde_json::to_string(&self)?;
+    pub(crate) fn as_file(&self, client: &Query) -> Result<Directory> {
+        let content = serde_json::to_string(self)?;
         let filename = format!("{}-result.json", self.uuid);
         Ok(client.directory().with_new_file(filename, content))
     }
