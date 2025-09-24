@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> Natrix is a work in progress and not suitable for production yet.
+
 # Introduction
 
 <img src="https://raw.githubusercontent.com/Serpent-Tools/branding/refs/heads/main/natrix.svg" alt="Logo" width="300" height="300">
