@@ -1,6 +1,6 @@
 # Introduction
 
-<img src="https://raw.githubusercontent.com/Serpent-Tools/branding/refs/heads/main/serpent-tools.svg" alt="Logo" width="300" height="300">
+<img src="https://raw.githubusercontent.com/Serpent-Tools/branding/refs/heads/main/natrix.svg" alt="Logo" width="300" height="300">
 
 Natrix is a ***Rust-first*** frontend framework. Embracing Rust’s strengths—leveraging smart pointers, derive macros, the builder pattern, and other idiomatic Rust features to create a truly native experience.
 
