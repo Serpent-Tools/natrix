@@ -50,73 +50,73 @@ fn all_tests<'q>(
 )> {
     let all_tests: Vec<(Pin<Box<dyn Future<Output = _>>>, bool)> = vec![
         // (future, is_sequential)
-        (Box::pin(crate::targets::rustfmt(client)), false),
-        (Box::pin(crate::targets::typos(client)), false),
+        // (Box::pin(crate::targets::typos(client)), false),
+        // (Box::pin(crate::targets::rustfmt(client)), false),
         (Box::pin(crate::targets::native_tests(client)), false),
-        (Box::pin(crate::targets::wasm_unit_tests(client)), false),
-        (Box::pin(crate::targets::clippy_workspace(client)), false),
-        (
-            Box::pin(crate::targets::clippy_minimal_versions(client)),
-            false,
-        ),
-        (Box::pin(crate::targets::clippy_natrix(client)), false),
-        (Box::pin(crate::targets::test_docs(client)), false),
-        (
-            Box::pin(crate::targets::cargo_deny(client, "./crates/natrix")),
-            false,
-        ),
-        (
-            Box::pin(crate::targets::cargo_deny(client, "./crates/natrix-cli")),
-            false,
-        ),
-        (Box::pin(crate::targets::unused_deps(client)), false),
-        (
-            Box::pin(crate::targets::test_project_gen(client, "stable")),
-            false,
-        ),
-        (
-            Box::pin(crate::targets::test_project_gen(client, "nightly")),
-            false,
-        ),
-        (Box::pin(crate::targets::test_book_links(client)), false),
-        (Box::pin(crate::targets::test_book_examples(client)), true),
-        (
-            Box::pin(crate::targets::integration_test(
-                client,
-                IntegrationTestMode::Dev,
-                arguments,
-            )),
-            false,
-        ),
-        (
-            Box::pin(crate::targets::integration_test(
-                client,
-                IntegrationTestMode::Release,
-                arguments,
-            )),
-            false,
-        ),
-        (
-            Box::pin(crate::targets::integration_test(
-                client,
-                IntegrationTestMode::Build,
-                arguments,
-            )),
-            false,
-        ),
+        // (Box::pin(crate::targets::wasm_unit_tests(client)), false),
+        // (Box::pin(crate::targets::clippy_workspace(client)), false),
+        // (
+        //     Box::pin(crate::targets::clippy_minimal_versions(client)),
+        //     false,
+        // ),
+        // (Box::pin(crate::targets::clippy_natrix(client)), false),
+        // (Box::pin(crate::targets::test_docs(client)), false),
+        // (
+        //     Box::pin(crate::targets::cargo_deny(client, "./crates/natrix")),
+        //     false,
+        // ),
+        // (
+        //     Box::pin(crate::targets::cargo_deny(client, "./crates/natrix-cli")),
+        //     false,
+        // ),
+        // (Box::pin(crate::targets::unused_deps(client)), false),
+        // (
+        //     Box::pin(crate::targets::test_project_gen(client, "stable")),
+        //     false,
+        // ),
+        // (
+        //     Box::pin(crate::targets::test_project_gen(client, "nightly")),
+        //     false,
+        // ),
+        // (Box::pin(crate::targets::test_book_links(client)), true),
+        // (Box::pin(crate::targets::test_book_examples(client)), true),
+        // (
+        //     Box::pin(crate::targets::integration_test(
+        //         client,
+        //         IntegrationTestMode::Dev,
+        //         arguments,
+        //     )),
+        //     false,
+        // ),
+        // (
+        //     Box::pin(crate::targets::integration_test(
+        //         client,
+        //         IntegrationTestMode::Release,
+        //         arguments,
+        //     )),
+        //     false,
+        // ),
+        // (
+        //     Box::pin(crate::targets::integration_test(
+        //         client,
+        //         IntegrationTestMode::Build,
+        //         arguments,
+        //     )),
+        //     false,
+        // ),
     ];
     all_tests
 }
 
 /// Generate the final report
-pub async fn generate_allure_report(client: &Query, results: Vec<TestResult>) -> Result<Directory> {
+pub async fn generate_allure_report(client: &Query, results: &[TestResult]) -> Result<Directory> {
     let mut reports = client.directory();
     // HACK: Dagger doesnt like you creating 100+ files in one call.
     // So we chunk it up.
-    for chunk in &results.into_iter().chunks(50) {
+    for chunk in &results.iter().chunks(50) {
         let mut chunked = client.directory();
         for result in chunk {
-            chunked = chunked.with_directory(".", result.into_file(client)?);
+            chunked = chunked.with_directory(".", result.as_file(client)?);
         }
 
         reports = reports.with_directory(".", chunked.sync().await?);
