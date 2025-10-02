@@ -48,7 +48,7 @@ macro_rules! log_or_panic_assert {
 /// TL;DR: Use this when an error both indicates a serious bug in framework or user code, and there
 /// is a reasonable way to recover from it in release builds.
 ///
-/// *IMPORTANT:* Using this for user bugs need to be carefully thought about, failling to check
+/// *IMPORTANT:* Using this for user bugs need to be carefully thought about, failing to check
 /// user inputs for validity is *not* a bug this should catch, and should use `Option`/`Result`
 /// instead. This should only be used for stuff that is 100% a framework bug, or user doing
 /// something very cursed.
@@ -69,8 +69,6 @@ pub(crate) use {log_or_panic, log_or_panic_assert, log_or_panic_result};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     #[should_panic(expected = "Error in release mode")]
     fn test_debug_expect() {
