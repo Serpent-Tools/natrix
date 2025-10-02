@@ -42,7 +42,7 @@ fn render_hello_world() -> impl Element<HelloWorld> {
         .child(e::div().id(RELOAD_ID).text(reload_tests::VALUE))
         .child(
             e::img()
-                .src(natrix::asset!("../../assets/logo.png"))
+                .src(natrix::asset!("../assets/logo.png"))
                 .id(IMG_ID),
         )
 }

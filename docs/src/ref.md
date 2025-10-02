@@ -218,4 +218,4 @@ Downgrading is the act of converting all references in a struct/enum to the spec
 In the `into_read` method you should return `None` if you get `FaillableMut(None)`, otherwise return the downgraded reference.
 In `into_mut`, return `None` for `FaillableMut(None)` and `Read`.
 
-*`Downgrade` should only be implemented for types that could represent both immutable and mutable references, for example its explcitily not implemented for `&`*
+*`Downgrade` should only be implemented for types that could represent both immutable and mutable references, for example its explicitly not implemented for `&`*

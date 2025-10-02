@@ -28,7 +28,7 @@ pub trait IntoCss {
     fn into_css(self) -> String;
 }
 
-/// Escape special characthers in string such that it becomes a valid css identifier
+/// Escape special characters in string such that it becomes a valid css identifier
 #[must_use]
 pub fn as_css_identifier(input: &str) -> String {
     let mut result = String::with_capacity(input.len().saturating_mul(4));

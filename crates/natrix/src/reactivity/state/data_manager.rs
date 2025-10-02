@@ -142,7 +142,7 @@ impl HookQueue {
 /// Trait automatically implemented on reactive structs by the derive macro.
 pub trait State: Sized + 'static {
     /// Overwrite the value of this state while preserving reactive tracking.
-    /// Generally prefer derefences.
+    /// Generally prefer dereferences.
     fn set(&mut self, new: Self);
 }
 
