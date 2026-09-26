@@ -7,33 +7,46 @@
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    flake-utils.url = "github:numtide/flake-utils";
-    nur = {
-      url = "github:nix-community/NUR";
+    serpentine = {
+      url = "github:Serpent-Tools/serpentine/v1.0.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
   outputs =
     {
-      self,
       nixpkgs,
       fenix,
-      flake-utils,
-      nur,
+      serpentine,
+      ...
     }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ nur.overlays.default ];
-        };
-      in
-      {
-        devShells.default = pkgs.mkShell {
-          packages = with pkgs; [
-            (fenix.packages.${system}.latest.withComponents [
+    let
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+      forAllSystems =
+        function:
+        nixpkgs.lib.genAttrs systems (
+          system:
+          function (
+            import nixpkgs {
+              inherit system;
+              overlays = [
+                fenix.overlays.default
+                serpentine.overlays.default
+              ];
+            }
+          )
+        );
+    in
+    {
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShell {
+          packages = [
+            (pkgs.fenix.latest.withComponents [
               "cargo"
               "clippy"
               "rustc"
@@ -43,15 +56,13 @@
 
               "rust-src"
             ])
-            pkgs.nur.repos.dagger.dagger
-            just
-            bacon
-            cargo-edit
+            pkgs.serpentine
+            pkgs.just
 
-            wasm-bindgen-cli_0_2_100
-            binaryen
+            pkgs.wasm-bindgen-cli_0_2_100
+            pkgs.binaryen
           ];
         };
-      }
-    );
+      });
+    };
 }
