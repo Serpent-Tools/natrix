@@ -7,7 +7,6 @@ members = [
     "crates/natrix-cli",
     "ci/integration_tests",
     "ci/integration_tests_dependency",
-    "dagger_pipeline",
 ]
 exclude = [
     "ci/benchmark", 
