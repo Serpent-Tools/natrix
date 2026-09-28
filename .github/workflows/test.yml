@@ -1,0 +1,16 @@
+name: Tests
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Serpent-Tools/serpentine-action@64c3c3d1efb5fe2555a0e3cb4534ce203a9ba144 # v1.0.0
+        with:
+          pipeline: ./ci/snek/main.snek

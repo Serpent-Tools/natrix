@@ -23,13 +23,11 @@ const CSS_OUTPUT_NAME: &str = "styles.css";
 /// Build a project
 pub(crate) fn build(config: &options::BuildConfig) -> Result<assets::AssetManifest> {
     if !utils::is_natrix_version_matching()? {
-        uwuln!(
-            "Cli version does not match natrix version.", red.bold
-        );
+        uwuln!("Cli version does not match natrix version.", red.bold);
     }
 
     print!("🧹 ");
-    uwuln!("Cleaning dist",bright_black);
+    uwuln!("Cleaning dist", bright_black);
     let _ = fs::remove_dir_all(&config.dist);
 
     if config.invalidate_cache {

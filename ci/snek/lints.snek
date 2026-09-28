@@ -23,7 +23,7 @@ export minimal_versions = rust::nightly
     > rust::WithBinstall("cargo-minimal-versions")
     > rust::WithBinstall("cargo-hack") // used by minimal-versions internally
     > rust::Chef(core::source_code, "cargo minimal-versions check --package natrix --direct --all-features")
-    > Exec("cargo check --package natrix --all-features");
+    > Exec("cargo minimal-versions check --package natrix --direct --all-features");
 
 // TODO: Make more strict
 def CargoDeny(crate) {

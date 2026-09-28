@@ -45,9 +45,7 @@ dist
     uwu!("Project created ", bright_green);
     uwu!(root.display(), cyan);
     println!();
-    uwuln!(
-        "Run `natrix dev` to start the dev server", bright_blue
-    );
+    uwuln!("Run `natrix dev` to start the dev server", bright_blue);
 
     Ok(())
 }
