@@ -20,6 +20,10 @@ We also have a [Nix](https://nixos.org/) flake to setup a working dev environmen
 
 ## Development Workflow
 
+Natrix uses [Serpentine](https://github.com/Serpent-Tools/serpentine) for CI and local testing, the serpentine pipeline is stored in `./ci/snek/`, for easier use you can use the `justfile` targets, 
+`fast` runs unit testing and linters, while `ci` runs the slower integration tests as well.
+
+the full pipeline will always be run in CI so dont worry about running the entire thing locally if it takes a while for you.
 
 ### Quick Development Iteration
 
