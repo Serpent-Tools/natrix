@@ -214,8 +214,9 @@ impl<S: State> HookStore<S> {
     }
 
     /// Drop the hook and all of its children
-    fn drop_hook(&mut self, hook_key: HookKey) {
-        let mut hooks_to_drop = vec![hook_key];
+    fn drop_hook(&mut self, target_hook_key: HookKey) {
+        let mut hooks_to_drop = vec![target_hook_key];
+
         while let Some(hook_key) = hooks_to_drop.pop() {
             if let Some(slot) = self.hooks.get_mut(hook_key.slot as usize) {
                 if slot.version != hook_key.version {
@@ -265,17 +266,17 @@ impl<S: State> InnerCtx<S> {
     where
         F: FnOnce(&mut Self, &mut Box<dyn ReactiveHook<S>>) -> R,
     {
-        let Some(slot_ref) = self.hooks.hooks.get_mut(hook_key.slot as usize) else {
+        let Some(before_slot_ref) = self.hooks.hooks.get_mut(hook_key.slot as usize) else {
             log_or_panic!("HookKey outside bounds of slotmap");
             return None;
         };
-        if slot_ref.version != hook_key.version {
+        if before_slot_ref.version != hook_key.version {
             log::trace!("Version mismatch in `run_with_hook_and_self`");
             return None;
         }
 
         let mut slot_value = SlotValue::InUse;
-        std::mem::swap(&mut slot_value, &mut slot_ref.value);
+        std::mem::swap(&mut slot_value, &mut before_slot_ref.value);
 
         let (order, mut hook) = match slot_value {
             SlotValue::Empty => {
@@ -294,16 +295,16 @@ impl<S: State> InnerCtx<S> {
 
         let res = func(self, &mut hook);
 
-        let Some(slot_ref) = self.hooks.hooks.get_mut(hook_key.slot as usize) else {
+        let Some(after_slot_ref) = self.hooks.hooks.get_mut(hook_key.slot as usize) else {
             log_or_panic!("HookKey outside bounds of slotmap");
             return None;
         };
 
-        if matches!(slot_ref.value, SlotValue::InUse) {
-            slot_ref.value = SlotValue::Occupied { hook, order };
+        if matches!(after_slot_ref.value, SlotValue::InUse) {
+            after_slot_ref.value = SlotValue::Occupied { hook, order };
         } else {
             log_or_panic_assert!(
-                matches!(slot_ref.value, SlotValue::Empty),
+                matches!(after_slot_ref.value, SlotValue::Empty),
                 "Slotmap entry overwritten in `run_with_hook_and_self`"
             );
         }
@@ -423,11 +424,11 @@ impl SignalDepList {
                             };
                             next.previous = Some(previous_slot);
 
-                            let Some(previous) = self.items.get_mut(&previous_slot) else {
+                            let Some(previous_slot) = self.items.get_mut(&previous_slot) else {
                                 log_or_panic!("Previous not found");
                                 return;
                             };
-                            previous.next = Some(next_slot);
+                            previous_slot.next = Some(next_slot);
                         }
                     }
                 }
@@ -569,7 +570,7 @@ pub(super) mod statics {
 
     /// Clear the statics
     #[cfg(feature = "test_utils")]
-    pub(crate) fn clear() {
+    pub fn clear() {
         DIRTY_HOOKS.set(None);
         CURRENT_HOOK.set(None);
     }
@@ -580,11 +581,11 @@ pub(super) mod statics {
 pub(crate) use statics::clear;
 
 /// State passed to rendering callbacks and hooks
-pub(crate) struct RenderingState<'s> {
+pub(crate) struct RenderingState<'state> {
     /// Push objects to this array to keep them alive as long as the parent context is valid.
-    pub(crate) keep_alive: &'s mut Vec<KeepAlive>,
+    pub(crate) keep_alive: &'state mut Vec<KeepAlive>,
     /// The hooks that are a child of this
-    pub(crate) hooks: &'s mut Vec<HookKey>,
+    pub(crate) hooks: &'state mut Vec<HookKey>,
 }
 
 /// The result of a hook update
@@ -754,8 +755,8 @@ impl<S: State> InnerCtx<S> {
             self.run_with_hook_and_self(hook_key, |ctx, hook| match hook.update(ctx, hook_key) {
                 UpdateResult::RunHook(dep, drop) => {
                     hook_queue.push_next(dep);
-                    for dep in drop {
-                        ctx.hooks.drop_hook(dep);
+                    for to_drop in drop {
+                        ctx.hooks.drop_hook(to_drop);
                     }
                 }
                 UpdateResult::DropHooks(deps) => {
@@ -783,7 +784,7 @@ impl<S: State> InnerCtx<S> {
     pub(super) fn track_reads<R>(
         &mut self,
         hook: HookKey,
-        func: impl for<'a> FnOnce(&'a mut Self) -> R,
+        func: impl for<'state> FnOnce(&'state mut Self) -> R,
     ) -> R {
         statics::with_hook(hook, || func(self))
     }

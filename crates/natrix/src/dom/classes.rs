@@ -51,11 +51,13 @@ where
 
         ClassResult::Dynamic(Box::new(move |ctx, rendering_state| {
             let hook = SimpleReactive::init_new(
-                Box::new(move |ctx, node| match self(ctx).calc_class(node) {
-                    ClassResult::SetIt(value) => {
-                        SimpleReactiveResult::Apply(ReactiveClass { data: value })
+                Box::new(move |callback_ctx, callback_node| {
+                    match self(callback_ctx).calc_class(callback_node) {
+                        ClassResult::SetIt(value) => {
+                            SimpleReactiveResult::Apply(ReactiveClass { data: value })
+                        }
+                        ClassResult::Dynamic(inner) => SimpleReactiveResult::Call(inner),
                     }
-                    ClassResult::Dynamic(inner) => SimpleReactiveResult::Call(inner),
                 }),
                 node.clone(),
                 ctx,

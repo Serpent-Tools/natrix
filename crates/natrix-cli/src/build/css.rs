@@ -12,7 +12,7 @@ use crate::prelude::*;
 use crate::project_gen::FEATURE_BUNDLE;
 
 /// Collect css from the stdout of a custom bundle build
-pub(crate) fn collect_css(
+pub fn collect_css(
     config: &options::BuildConfig,
     parse_result: &super::wasm_parser::WasmParseResult,
 ) -> Result<PathBuf> {
@@ -43,11 +43,11 @@ fn extract_css() -> Result<String> {
 
 /// Optimize the given css string
 fn optimize_css(
-    css_content: &str,
+    raw_css_content: &str,
     parse_result: &super::wasm_parser::WasmParseResult,
 ) -> Result<String> {
     let mut styles = lightningcss::stylesheet::StyleSheet::parse(
-        css_content,
+        raw_css_content,
         lightningcss::stylesheet::ParserOptions {
             filename: String::from("<BUNDLED CSS>.css"),
             css_modules: None,
@@ -78,21 +78,20 @@ fn optimize_css(
         pseudo_classes: None,
         targets,
     })?;
-
     let css_content = css_content.code;
 
     Ok(css_content)
 }
 
 /// Visitor to extract symbosl from a stylesheet
-pub(crate) struct SymbolVisitor {
+struct SymbolVisitor {
     /// The collected symbols
-    pub(crate) symbols: HashSet<String>,
+    symbols: HashSet<String>,
     /// Symbols the should always be kept
-    pub(crate) keep: HashSet<String>,
+    keep: HashSet<String>,
 }
 
-impl<'i> lightningcss::visitor::Visitor<'i> for SymbolVisitor {
+impl<'css> lightningcss::visitor::Visitor<'css> for SymbolVisitor {
     type Error = std::convert::Infallible;
     fn visit_types(&self) -> lightningcss::visitor::VisitTypes {
         lightningcss::visit_types!(SELECTORS | RULES)
@@ -100,7 +99,7 @@ impl<'i> lightningcss::visitor::Visitor<'i> for SymbolVisitor {
 
     fn visit_rule(
         &mut self,
-        rule: &mut lightningcss::rules::CssRule<'i>,
+        rule: &mut lightningcss::rules::CssRule<'css>,
     ) -> std::result::Result<(), Self::Error> {
         if let lightningcss::rules::CssRule::Unknown(unknown_rule) = rule
             && unknown_rule.name == "keep"
@@ -128,7 +127,7 @@ impl<'i> lightningcss::visitor::Visitor<'i> for SymbolVisitor {
 
     fn visit_selector(
         &mut self,
-        selector: &mut lightningcss::selector::Selector<'i>,
+        selector: &mut lightningcss::selector::Selector<'css>,
     ) -> std::result::Result<(), Self::Error> {
         use lightningcss::selector::Component;
         for part in selector.iter_mut_raw_match_order() {
@@ -140,8 +139,8 @@ impl<'i> lightningcss::visitor::Visitor<'i> for SymbolVisitor {
                     self.symbols.insert(id.to_string());
                 }
                 Component::Negation(lst) | Component::Is(lst) | Component::Where(lst) => {
-                    for selector in lst.iter_mut() {
-                        self.visit_selector(selector)?;
+                    for sub_selector in lst.iter_mut() {
+                        self.visit_selector(sub_selector)?;
                     }
                 }
                 _ => (),
@@ -152,7 +151,7 @@ impl<'i> lightningcss::visitor::Visitor<'i> for SymbolVisitor {
 
     fn visit_selector_list(
         &mut self,
-        selectors: &mut lightningcss::selector::SelectorList<'i>,
+        selectors: &mut lightningcss::selector::SelectorList<'css>,
     ) -> std::result::Result<(), Self::Error> {
         for selector in &mut selectors.0 {
             self.visit_selector(selector)?;
@@ -162,9 +161,7 @@ impl<'i> lightningcss::visitor::Visitor<'i> for SymbolVisitor {
 }
 
 /// Get the symbols to DCE in a style sheet
-pub(crate) fn get_symbols(
-    stylesheet: &mut lightningcss::stylesheet::StyleSheet,
-) -> HashSet<String> {
+fn get_symbols(stylesheet: &mut lightningcss::stylesheet::StyleSheet) -> HashSet<String> {
     let mut visitor = SymbolVisitor {
         symbols: HashSet::new(),
         keep: HashSet::new(),

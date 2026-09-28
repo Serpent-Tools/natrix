@@ -30,7 +30,7 @@ fn find_gitignore() -> Result<ignore::gitignore::Gitignore> {
 }
 
 /// Do the dev server
-pub(crate) fn do_dev(args: &options::DevArguments) -> Result<()> {
+pub fn do_dev(args: &options::DevArguments) -> Result<()> {
     let config = args.get_build_config()?;
 
     let (tx_notify, rx_notify) = mpsc::channel();
@@ -104,13 +104,15 @@ pub(crate) fn do_dev(args: &options::DevArguments) -> Result<()> {
 #[expect(
     clippy::expect_used,
     clippy::needless_pass_by_value,
+    clippy::infinite_loop,
     reason = "This is running in a thread"
 )]
 fn spawn_websocket(port: u16, reload_signal: mpsc::Receiver<()>, ip: Ipv4Addr) {
     let server = TcpListener::bind((ip, port)).expect("Failed to bind websocket");
     let clients = Arc::new(Mutex::new(Vec::new()));
 
-    let clients_2 = clients.clone();
+    // TODO:
+    let clients_clone = Arc::clone(&clients);
     thread::spawn(move || {
         for stream in server.incoming() {
             let Ok(stream) = stream else {
@@ -119,8 +121,8 @@ fn spawn_websocket(port: u16, reload_signal: mpsc::Receiver<()>, ip: Ipv4Addr) {
             let Ok(ws) = tungstenite::accept(stream) else {
                 continue;
             };
-            let mut clients = clients_2.lock().expect("Mutex gone");
-            clients.push(ws);
+            let mut clients_clone = clients_clone.lock().expect("Mutex gone");
+            clients_clone.push(ws);
         }
     });
 
@@ -136,7 +138,7 @@ fn spawn_websocket(port: u16, reload_signal: mpsc::Receiver<()>, ip: Ipv4Addr) {
 }
 
 /// Find a free port
-pub(crate) fn get_free_port(preferred: u16) -> Result<u16> {
+pub fn get_free_port(preferred: u16) -> Result<u16> {
     if TcpListener::bind((Ipv4Addr::LOCALHOST, preferred)).is_ok() {
         return Ok(preferred);
     }
@@ -152,7 +154,7 @@ pub(crate) fn get_free_port(preferred: u16) -> Result<u16> {
     clippy::needless_pass_by_value,
     reason = "This is running in a thread"
 )]
-pub(crate) fn spawn_server(
+fn spawn_server(
     folder: PathBuf,
     asset_manifest: Arc<Mutex<AssetManifest>>,
     preferred_port: Option<u16>,
@@ -166,15 +168,10 @@ pub(crate) fn spawn_server(
     };
 
     let server = Server::http((ip, port)).expect("Failed to start server");
-    let port = server
-        .server_addr()
-        .to_ip()
-        .expect("Failed to get ip")
-        .port();
+    let addr = server.server_addr().to_ip().expect("Failed to get ip");
+
     uwu!("🚀 Dev server running at http://", green);
-    uwu!(ip, bright_red);
-    uwu!(":", bright_red);
-    uwu!(&port.to_string(), bright_red);
+    uwu!(addr, bright_red);
 
     let live_reload_text = if let Some(live_reload_url) = live_reload {
         format!(" (with live-reload via {live_reload_url})")

@@ -627,7 +627,8 @@ impl CssPropertyValue for Vec<Filter> {
     type Kind = Filter;
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(test)]
 mod tests {
     use proptest::prelude::*;
 
@@ -639,7 +640,6 @@ mod tests {
         type Strategy = BoxedStrategy<Self>;
 
         fn arbitrary_with((): ()) -> Self::Strategy {
-            // One strategy per constructor; adapt names if yours differ.
             let blur = any::<Length>().prop_map(Filter::blur);
             let brightness = any::<Percentage>().prop_map(Filter::brightness);
             let contrast = any::<Percentage>().prop_map(Filter::contrast);
@@ -650,7 +650,9 @@ mod tests {
                 any::<Length>(),
                 any::<Color>(),
             )
-                .prop_map(|(x, y, b, c)| Filter::drop_shadow(x, y, b, c));
+                .prop_map(|(width, height, shadow_blur, color)| {
+                    Filter::drop_shadow(width, height, shadow_blur, color)
+                });
 
             let grayscale = any::<Percentage>().prop_map(Filter::grayscale);
             let hue_rotate = any::<Angle>().prop_map(Filter::hue_rotate);

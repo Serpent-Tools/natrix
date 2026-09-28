@@ -12,7 +12,7 @@ use crate::reactivity::context::RenderCtx;
 use crate::reactivity::dom_hooks::{ReactiveAttribute, SimpleReactive, SimpleReactiveResult};
 use crate::type_macros;
 
-/// The result of apply attribute
+/// The result of `calc_attribute`
 pub(crate) enum AttributeResult<C: State> {
     /// The attribute should be set
     SetIt(Option<Cow<'static, str>>),
@@ -141,14 +141,14 @@ where
 
         AttributeResult::IsDynamic(Box::new(move |ctx, render_state| {
             let hook = SimpleReactive::init_new(
-                Box::new(
-                    move |ctx, node| match self(ctx).calc_attribute(name, node) {
+                Box::new(move |callback_ctx, callback_node| {
+                    match self(callback_ctx).calc_attribute(name, callback_node) {
                         AttributeResult::SetIt(value) => {
                             SimpleReactiveResult::Apply(ReactiveAttribute { name, data: value })
                         }
                         AttributeResult::IsDynamic(inner) => SimpleReactiveResult::Call(inner),
-                    },
-                ),
+                    }
+                }),
                 node.clone(),
                 ctx,
             );

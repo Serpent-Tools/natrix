@@ -47,23 +47,20 @@ pub enum MaybeStaticElement<C: State> {
 
 impl<C: State> MaybeStaticElement<C> {
     /// Convert the element into a `web_sys::Node`.
-    pub(crate) fn render(
+    // TODO: Refactor this
+    pub fn render_static(
         self,
         ctx: &mut InnerCtx<C>,
         render_state: &mut RenderingState,
     ) -> ElementRenderResult {
         match self {
             MaybeStaticElement::Static(element) => element,
-            MaybeStaticElement::Html(html) => {
-                let HtmlElement {
-                    element, deferred, ..
-                } = html;
-
-                for modification in deferred {
+            MaybeStaticElement::Html(mut html) => {
+                for modification in html.drain_deferred() {
                     modification(ctx, render_state);
                 }
 
-                ElementRenderResult::Node(element.into())
+                ElementRenderResult::Node(html.get_element().clone().into())
             }
             MaybeStaticElement::Dynamic(element) => element.render(ctx, render_state),
         }
@@ -177,7 +174,10 @@ where
         render_state: &mut RenderingState,
     ) -> ElementRenderResult {
         let this = *self;
-        let (me, node) = ReactiveNode::create_initial(Box::new(move |ctx| this(ctx).render()), ctx);
+        let (me, node) = ReactiveNode::create_initial(
+            Box::new(move |handler_ctx| this(handler_ctx).render()),
+            ctx,
+        );
         render_state.hooks.push(me);
         ElementRenderResult::Node(node)
     }

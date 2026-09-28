@@ -20,7 +20,7 @@ const WASM_CUSTOM_SECTION_ID: u8 = 0;
 const SOURCEMAP_SECTION_NAME: &str = "sourceMappingURL";
 
 /// Create and embed a source map in the given wasm file.
-pub(crate) fn create_sourcemap(
+pub fn create_sourcemap(
     wasm_file: &Path,
     parse_result: &super::wasm_parser::WasmParseResult,
 ) -> Result<()> {
@@ -36,7 +36,7 @@ pub(crate) fn create_sourcemap(
     let sections: HashMap<&str, &[u8]> = parse_result
         .custom_sections
         .iter()
-        .map(|(k, v)| (k.as_str(), v.as_slice()))
+        .map(|(section, content)| (section.as_str(), content.as_slice()))
         .collect();
 
     populate_sourcemap(&mut sourcemap, &sections, parse_result.code_section_offset)?;
@@ -184,10 +184,9 @@ fn encode_u32_vlq(mut value: u32, target: &mut Vec<u8>) {
         value >>= 7;
     }
 
-    debug_assert!(value <= 0b0111_1111);
     #[expect(
         clippy::cast_possible_truncation,
-        reason = "The above loop (and assertion) means that this is valid"
+        reason = "The above loop means that this is valid"
     )]
     target.push(value as u8);
 }

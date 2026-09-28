@@ -32,8 +32,8 @@ pub trait IntoCss {
 #[must_use]
 pub fn as_css_identifier(input: &str) -> String {
     let mut result = String::with_capacity(input.len().saturating_mul(4));
-    for c in input.chars() {
-        let res = write!(&mut result, "\\{:x} ", c as u32);
+    for character in input.chars() {
+        let res = write!(&mut result, "\\{:x} ", character as u32);
         log_or_panic_result!(res, "Failed to write to string (???).");
     }
     result
@@ -155,9 +155,21 @@ fn collect_css() -> String {
         unsafe_code,
         reason = "This is required for inventory to work on wasm, it is not included in production builds"
     )]
-    unsafe {
-        log::trace!("Calling ctors");
-        __wasm_call_ctors();
+    {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static DONE: AtomicBool = AtomicBool::new(false);
+
+        if !DONE.swap(true, Ordering::AcqRel) {
+            // SAFETY:
+            // Called only once, under the assumption that natrix is the only one calling this in the
+            // workspace.
+            //
+            // In addition this is only done in the no-ssg path, which is rare for production.
+            unsafe {
+                log::trace!("Calling ctors");
+                __wasm_call_ctors();
+            }
+        }
     }
 
     log::trace!("Collecting strings");
@@ -262,7 +274,8 @@ fn assert_valid_css(string: &str) {
     }
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
 mod tests {
     #[test]
     fn unique_is_unique() {
@@ -297,7 +310,7 @@ mod tests {
         );
 
         #[test]
-        fn test_collect() {
+        fn collect() {
             let result = super::super::collect_css();
             super::super::assert_valid_css(&result);
         }
@@ -305,7 +318,7 @@ mod tests {
 
     proptest::proptest! {
         #[test]
-        fn test_as_css_identifier(input in ".+") {
+        fn as_css_identifier(input in ".+") {
             let result = super::as_css_identifier(&input);
             let test_body = format!("#{result}{{}}");
             super::assert_valid_css(&test_body);

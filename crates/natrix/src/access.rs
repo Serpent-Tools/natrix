@@ -14,25 +14,25 @@ use std::ops::{Deref, DerefMut};
 /// *not* in async contexts or similar, as certain closures created by the framework assume sync
 /// invaraints are upheld.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub enum Ref<'a, T: ?Sized> {
+pub enum Ref<'reference, T: ?Sized> {
     /// a `&T`
-    Read(&'a T),
+    Read(&'reference T),
     /// a `&mut T`
-    Mut(&'a mut T),
+    Mut(&'reference mut T),
     /// a `Option<&mut T>` (used in async)
-    FaillableMut(Option<&'a mut T>),
+    FaillableMut(Option<&'reference mut T>),
 }
 
-impl<'a, T: ?Sized> Ref<'a, T> {
+impl<'reference, T: ?Sized> Ref<'reference, T> {
     /// Run a given function depending on whether its a `&` or `&mut`.
     /// These need to return the same type.
     #[inline]
     #[must_use]
     pub fn map<R: ?Sized>(
         self,
-        read: impl FnOnce(&'a T) -> &'a R,
-        write: impl FnOnce(&'a mut T) -> &'a mut R,
-    ) -> Ref<'a, R> {
+        read: impl FnOnce(&'reference T) -> &'reference R,
+        write: impl FnOnce(&'reference mut T) -> &'reference mut R,
+    ) -> Ref<'reference, R> {
         match self {
             Ref::Read(value) => Ref::Read(read(value)),
             Ref::Mut(value) => Ref::Mut(write(value)),
@@ -52,7 +52,7 @@ impl<'a, T: ?Sized> Ref<'a, T> {
     /// ```
     #[inline]
     #[must_use]
-    pub fn project(self) -> T::Projected<'a>
+    pub fn project(self) -> T::Projected<'reference>
     where
         T: Project,
     {
@@ -62,7 +62,7 @@ impl<'a, T: ?Sized> Ref<'a, T> {
     /// dereference the inner value
     #[inline]
     #[must_use]
-    pub fn deref(self) -> Ref<'a, T::Target>
+    pub fn deref(self) -> Ref<'reference, T::Target>
     where
         T: Deref + DerefMut,
     {
@@ -70,15 +70,15 @@ impl<'a, T: ?Sized> Ref<'a, T> {
     }
 }
 
-impl<'a, T: ?Sized> From<&'a T> for Ref<'a, T> {
+impl<'reference, T: ?Sized> From<&'reference T> for Ref<'reference, T> {
     #[inline]
-    fn from(value: &'a T) -> Self {
+    fn from(value: &'reference T) -> Self {
         Ref::Read(value)
     }
 }
-impl<'a, T: ?Sized> From<&'a mut T> for Ref<'a, T> {
+impl<'reference, T: ?Sized> From<&'reference mut T> for Ref<'reference, T> {
     #[inline]
-    fn from(value: &'a mut T) -> Self {
+    fn from(value: &'reference mut T) -> Self {
         Ref::Mut(value)
     }
 }
@@ -87,19 +87,19 @@ impl<'a, T: ?Sized> From<&'a mut T> for Ref<'a, T> {
 /// `as_mut`/`as_ref` methods.
 pub trait Project: Sized {
     /// The result of the projection, should contain `Ref`s with the `'a` lifetime.
-    type Projected<'a>
+    type Projected<'reference>
     where
-        Self: 'a;
+        Self: 'reference;
 
     /// Project a `Ref<Self>` to `Self::Projected`
     fn project(value: Ref<'_, Self>) -> Self::Projected<'_>;
 }
 
 impl<T> Project for Option<T> {
-    type Projected<'a>
-        = Option<Ref<'a, T>>
+    type Projected<'reference>
+        = Option<Ref<'reference, T>>
     where
-        Self: 'a;
+        Self: 'reference;
 
     fn project(value: Ref<'_, Self>) -> Self::Projected<'_> {
         match value {
@@ -114,10 +114,10 @@ impl<T> Project for Option<T> {
 }
 
 impl<T, E> Project for Result<T, E> {
-    type Projected<'a>
-        = Result<Ref<'a, T>, Ref<'a, E>>
+    type Projected<'reference>
+        = Result<Ref<'reference, T>, Ref<'reference, E>>
     where
-        Self: 'a;
+        Self: 'reference;
 
     fn project(value: Ref<'_, Self>) -> Self::Projected<'_> {
         match value {
@@ -139,7 +139,7 @@ impl<T, E> Project for Result<T, E> {
 ///
 /// Note, to avoid unwraps in your code for this you can use `RefClosure` apis instead.
 /// Which hides the unwrap behind the assumption the closure is well behaved (maintains variant.)
-pub trait Downgrade<'a> {
+pub trait Downgrade<'reference> {
     /// The `&` version of this type.
     type ReadOutput;
 
@@ -155,9 +155,9 @@ pub trait Downgrade<'a> {
     fn into_mut(self) -> Option<Self::MutOutput>;
 }
 
-impl<'a, T: ?Sized> Downgrade<'a> for Ref<'a, T> {
-    type ReadOutput = &'a T;
-    type MutOutput = &'a mut T;
+impl<'reference, T: ?Sized> Downgrade<'reference> for Ref<'reference, T> {
+    type ReadOutput = &'reference T;
+    type MutOutput = &'reference mut T;
 
     #[inline]
     fn into_read(self) -> Option<Self::ReadOutput> {
@@ -180,9 +180,9 @@ impl<'a, T: ?Sized> Downgrade<'a> for Ref<'a, T> {
 
 // NOTE: We do not implement `Downgradable` for `&`
 // Because a type that always fails to downgrade into `&mut` is not a valid `Downgradble`
-impl<'a, T: ?Sized> Downgrade<'a> for &'a mut T {
-    type ReadOutput = &'a T;
-    type MutOutput = &'a mut T;
+impl<'reference, T: ?Sized> Downgrade<'reference> for &'reference mut T {
+    type ReadOutput = &'reference T;
+    type MutOutput = &'reference mut T;
     #[inline]
     fn into_read(self) -> Option<Self::ReadOutput> {
         Some(self)
@@ -192,9 +192,9 @@ impl<'a, T: ?Sized> Downgrade<'a> for &'a mut T {
         Some(self)
     }
 }
-impl<'a, T> Downgrade<'a> for Option<T>
+impl<'reference, T> Downgrade<'reference> for Option<T>
 where
-    T: Downgrade<'a>,
+    T: Downgrade<'reference>,
 {
     type ReadOutput = Option<T::ReadOutput>;
     type MutOutput = Option<T::MutOutput>;
@@ -213,10 +213,10 @@ where
         }
     }
 }
-impl<'a, T, E> Downgrade<'a> for Result<T, E>
+impl<'reference, T, E> Downgrade<'reference> for Result<T, E>
 where
-    T: Downgrade<'a>,
-    E: Downgrade<'a>,
+    T: Downgrade<'reference>,
+    E: Downgrade<'reference>,
 {
     type ReadOutput = Result<T::ReadOutput, E::ReadOutput>;
     type MutOutput = Result<T::MutOutput, E::MutOutput>;
@@ -239,32 +239,32 @@ where
 /// And allows calling them with normal references and getting normal references back.
 ///
 /// You should generally not use this bounds, and instead opt for the `impl Fn...` syntax.
-pub trait RefClosure<'a, I: ?Sized, T: Downgrade<'a>> {
+pub trait RefClosure<'reference, I: ?Sized, T: Downgrade<'reference>> {
     /// Call the read path of this closure.
     /// This will never fail
     ///
     /// INVARIANT: Must not be called from async, use `call_failable`
-    fn call_read(&self, value: &'a I) -> T::ReadOutput;
+    fn call_read(&self, value: &'reference I) -> T::ReadOutput;
 
     /// Call the mut part of this path.
     /// This will panic if the closure returns `Ref::Read` event if given a `Ref::Mut`
     /// (Which shouldnt happen for any well behaving implementation)
     ///
     /// INVARIANT: Must not be called from async, use `call_failable`
-    fn call_mut(&self, value: &'a mut I) -> T::MutOutput;
+    fn call_mut(&self, value: &'reference mut I) -> T::MutOutput;
 
     /// Call the mut part of this path, but return `None` if any earlier invariants (like guards),
     /// are no longer valid.
-    fn call_failable(&self, value: &'a mut I) -> Option<T::MutOutput>;
+    fn call_failable(&self, value: &'reference mut I) -> Option<T::MutOutput>;
 }
-impl<'a, I, T, F> RefClosure<'a, I, T> for F
+impl<'reference, I, T, F> RefClosure<'reference, I, T> for F
 where
-    F: Fn(Ref<'a, I>) -> T,
-    T: Downgrade<'a>,
-    I: 'a + ?Sized,
+    F: Fn(Ref<'reference, I>) -> T,
+    T: Downgrade<'reference>,
+    I: 'reference + ?Sized,
 {
     #[expect(clippy::unreachable, reason = "Core invariant.")]
-    fn call_read(&self, value: &'a I) -> T::ReadOutput {
+    fn call_read(&self, value: &'reference I) -> T::ReadOutput {
         if let Some(value) = self(Ref::Read(value)).into_read() {
             value
         } else {
@@ -273,7 +273,7 @@ where
     }
 
     #[expect(clippy::unreachable, reason = "Core invariant.")]
-    fn call_mut(&self, value: &'a mut I) -> T::MutOutput {
+    fn call_mut(&self, value: &'reference mut I) -> T::MutOutput {
         if let Some(value) = self(Ref::Mut(value)).into_mut() {
             value
         } else {
@@ -281,14 +281,14 @@ where
         }
     }
 
-    fn call_failable(&self, value: &'a mut I) -> Option<T::MutOutput> {
+    fn call_failable(&self, value: &'reference mut I) -> Option<T::MutOutput> {
         self(Ref::FaillableMut(Some(value))).into_mut()
     }
 }
 
 /// A "alias trait" for `impl Fn(Ref<S>) -> Ref<R> + Clone + 'static`
 pub trait Getter<S: ?Sized, R: ?Sized>:
-    for<'a> Fn(Ref<'a, S>) -> Ref<'a, R> + Clone + 'static
+    for<'reference> Fn(Ref<'reference, S>) -> Ref<'reference, R> + Clone + 'static
 {
 }
 impl<S, R, F> Getter<S, R> for F
@@ -296,7 +296,7 @@ where
     R: ?Sized,
     S: ?Sized,
     F: Clone + 'static,
-    F: for<'a> Fn(Ref<'a, S>) -> Ref<'a, R>,
+    F: for<'reference> Fn(Ref<'reference, S>) -> Ref<'reference, R>,
 {
 }
 

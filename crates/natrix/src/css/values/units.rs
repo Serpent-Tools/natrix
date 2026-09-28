@@ -95,15 +95,13 @@ macro_rules! define_length_enum {
                     any::<f32>(),
                     0usize .. __VARIANT_COUNT
                 )
-                    .prop_map(|(v, idx)| {
-                        // Map idx to variant without building a big match with explicit numeric literals.
-                        // O(#variants) but done only at generation time and remains flat.
-                        let mut i = idx;
+                    .prop_map(|(value, idx)| {
+                        let mut idx = idx;
                         $(
-                            if i == 0 {
-                                return Length::$variant(v);
+                            if idx == 0 {
+                                return Length::$variant(value);
                             }
-                            i -= 1;
+                            idx -= 1;
                         )+
                         unreachable!("index out of range (variant mapping logic error)");
                     })

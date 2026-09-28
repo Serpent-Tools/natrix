@@ -76,7 +76,7 @@ impl<S: State> RenderCtx<'_, '_, S> {
     #[inline]
     pub fn watch<T, F>(&mut self, func: F) -> T
     where
-        F: for<'c, 's> Fn(RenderCtx<'c, 's, S>) -> T + 'static,
+        F: for<'context, 'state> Fn(RenderCtx<'context, 'state, S>) -> T + 'static,
         T: PartialEq + Clone + 'static,
     {
         let me = self.ctx.hooks.reserve_key();

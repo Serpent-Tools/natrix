@@ -1,9 +1,5 @@
 //! Various internal error handling mechanisms
 
-/// Cold path hint, causes compiler to better optimize unlikely error paths.
-#[cold]
-pub(crate) fn cold_path() {}
-
 /// Panic on `Err` value in debug mode.
 macro_rules! log_or_panic_result {
     ($expr:expr, $($msg:expr),*) => {
@@ -54,8 +50,7 @@ macro_rules! log_or_panic_assert {
 /// something very cursed.
 macro_rules! log_or_panic {
     ($($msg:expr),*) => {
-        $crate::error_handling::cold_path();
-
+        ::std::hint::cold_path();
 
         ::log::error!($($msg),*);
         if cfg!(debug_assertions) {
@@ -70,16 +65,17 @@ pub(crate) use log_or_panic_assert;
 pub(crate) use log_or_panic_result;
 
 #[cfg(test)]
+#[cfg(debug_assertions)]
 mod tests {
     #[test]
     #[should_panic(expected = "Error in release mode")]
-    fn test_debug_expect() {
+    fn debug_expect() {
         log_or_panic_result!(Err::<(), _>("error"), "Error in release mode");
     }
 
     #[test]
     #[should_panic(expected = "This won't panic in release")]
-    fn test_debug_panic() {
+    fn debug_panic() {
         log_or_panic!("This won't panic in release");
     }
 }

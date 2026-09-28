@@ -17,7 +17,7 @@ impl<S: State> EventCtx<'_, S> {
         F: Future<Output = Option<()>> + 'static,
     {
         let handle = AsyncCtxHandle {
-            inner: self.0.this.clone(),
+            inner: Weak::clone(&self.0.this),
         };
         let future = func(handle);
         let future = async {
@@ -56,7 +56,7 @@ impl<F: Future> Future for PanicCheckFuture<F> {
 }
 
 /// Context for async operations, providing mutable access to state.
-pub struct AsyncCtx<'s, S: State>(pub(crate) &'s mut InnerCtx<S>);
+pub struct AsyncCtx<'state, S: State>(&'state mut InnerCtx<S>);
 
 impl<S: State> Deref for AsyncCtx<'_, S> {
     type Target = S;
@@ -84,7 +84,7 @@ pub struct AsyncCtxHandle<S: State> {
 impl<S: State> Clone for AsyncCtxHandle<S> {
     fn clone(&self) -> Self {
         Self {
-            inner: self.inner.clone(),
+            inner: Weak::clone(&self.inner),
         }
     }
 }

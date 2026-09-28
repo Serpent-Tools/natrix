@@ -8,7 +8,7 @@ use crate::prelude::*;
 
 /// Result of parsing a WASM file containing both data and custom sections
 #[derive(Debug)]
-pub(crate) struct WasmParseResult {
+pub struct WasmParseResult {
     /// Custom sections keyed by name
     pub custom_sections: HashMap<String, Vec<u8>>,
     /// Strings extracted from data sections
@@ -18,7 +18,7 @@ pub(crate) struct WasmParseResult {
 }
 
 /// Parse a WASM file from a reader using streaming mode
-pub(crate) fn parse_wasm_stream<R: Read>(mut reader: R) -> Result<WasmParseResult> {
+pub fn parse_wasm_stream<R: Read>(mut reader: R) -> Result<WasmParseResult> {
     let mut custom_sections = HashMap::new();
     let mut data_strings = Vec::new();
     let mut code_section_offset = 0;
@@ -60,15 +60,18 @@ pub(crate) fn parse_wasm_stream<R: Read>(mut reader: R) -> Result<WasmParseResul
         };
 
         match payload {
-            wasmparser::Payload::CustomSection(reader) => {
-                custom_sections.insert(reader.name().to_string(), reader.data().to_vec());
+            wasmparser::Payload::CustomSection(section_reader) => {
+                custom_sections.insert(
+                    section_reader.name().to_owned(),
+                    section_reader.data().to_vec(),
+                );
             }
             wasmparser::Payload::DataSection(data_section_reader) => {
                 for data in data_section_reader {
                     let data = data?;
                     if let Some(bytes) = data.data.get(0..) {
                         if let Ok(string) = std::str::from_utf8(bytes) {
-                            data_strings.push(string.to_string());
+                            data_strings.push(string.to_owned());
                         } else {
                             // Clean out problematic bytes
                             //
@@ -79,8 +82,8 @@ pub(crate) fn parse_wasm_stream<R: Read>(mut reader: R) -> Result<WasmParseResul
                                 .filter(|&&x| x.is_ascii())
                                 .copied()
                                 .collect::<Vec<u8>>();
-                            if let Ok(string) = std::str::from_utf8(&cleaned) {
-                                data_strings.push(string.to_string());
+                            if let Ok(string) = String::from_utf8(cleaned) {
+                                data_strings.push(string);
                             } else {
                                 return Err(anyhow!(
                                     "Failed to extract string from wasm, this might lead to wrongful DCE optimization"
@@ -111,7 +114,7 @@ pub(crate) fn parse_wasm_stream<R: Read>(mut reader: R) -> Result<WasmParseResul
 }
 
 /// Parse a WASM file from a file path
-pub(crate) fn parse_wasm_file(wasm_file: &Path) -> Result<WasmParseResult> {
+pub fn parse_wasm_file(wasm_file: &Path) -> Result<WasmParseResult> {
     let file = std::fs::File::open(wasm_file)?;
     parse_wasm_stream(file)
 }

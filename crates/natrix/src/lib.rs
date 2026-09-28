@@ -55,6 +55,7 @@ pub(crate) fn get_window() -> web_sys::Window {
 }
 
 /// Commonly used types and traits.
+#[expect(clippy::min_ident_chars, reason = "intended api")]
 pub mod prelude {
     pub use natrix_macros::State;
 

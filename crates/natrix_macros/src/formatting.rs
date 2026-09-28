@@ -101,7 +101,7 @@ impl Input {
 }
 
 /// actual implementation of `format_elements!`
-pub(crate) fn format_elements(raw_input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn format_elements(raw_input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let raw_clone = raw_input.clone();
     let input = syn::parse_macro_input!(raw_input as Input);
     let segments = match input.parse_string() {

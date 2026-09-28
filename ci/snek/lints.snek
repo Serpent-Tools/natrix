@@ -8,7 +8,6 @@ export typos = core::debian
     > With(core::source_code, ".")
     > Exec("typos");
 
-// TODO: Add more lints
 export clippy_native = rust::stable
     > Exec("rustup component add clippy")
     > rust::WithBinstall("cargo-hack")
@@ -25,7 +24,6 @@ export minimal_versions = rust::nightly
     > rust::Chef(core::source_code, "cargo minimal-versions check --package natrix --direct --all-features")
     > Exec("cargo minimal-versions check --package natrix --direct --all-features");
 
-// TODO: Make more strict
 def CargoDeny(crate) {
     return rust::stable
         > rust::WithBinstall("cargo-deny")

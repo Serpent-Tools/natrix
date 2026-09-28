@@ -6,6 +6,9 @@ edition = "2024"
 description = "Macros for natrix"
 license = "MIT"
 repository = "https://github.com/Serpent-Tools/natrix"
+keywords = ["frontend", "framework", "web", "wasm"]
+categories = ["gui", "wasm", "web-programming"]
+readme = "../../README.md"
 
 [lints]
 workspace = true
