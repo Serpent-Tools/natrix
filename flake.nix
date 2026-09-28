@@ -80,6 +80,7 @@
 
               wasm-bindgen-cli
               pkgs.binaryen
+              pkgs.chromedriver
             ];
           };
         }
