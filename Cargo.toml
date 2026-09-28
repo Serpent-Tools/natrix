@@ -12,6 +12,10 @@ exclude = [
     "ci/benchmark", 
 ]
 
+[workspace.dependencies]
+serde = { version = "1.0.229", default-features = false }
+serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
+
 [profile.release]
 opt-level = "z"
 codegen-units = 1

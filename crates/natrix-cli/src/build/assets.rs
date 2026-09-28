@@ -57,10 +57,7 @@ pub(crate) fn collect_asset_manifest(asset_files: Vec<PathBuf>) -> Result<AssetM
     for file in asset_files {
         let mut file_reader = fs::File::open(file)?;
         let natrix_shared::macros::MacroEmisson::Asset { path, emitted_path } =
-            natrix_shared::macros::bincode::decode_from_std_read(
-                &mut file_reader,
-                natrix_shared::macros::bincode_config(),
-            )?;
+            natrix_shared::macros::serde_json::from_reader(&mut file_reader)?;
         mapping.insert(emitted_path, path);
     }
 

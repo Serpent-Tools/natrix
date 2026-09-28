@@ -16,3 +16,7 @@ allow = [
 [bans]
 multiple-versions = "deny"
 wildcards = "deny"
+skip = [
+    # https://github.com/taiki-e/pin-project/pull/367
+    { crate = "syn@2.0.119", reason = "Some dependencies have not updated to syn v3." }
+]
