@@ -26,8 +26,8 @@ def ProjectGen(base, flags) {
 
 def NatrixDev(profile) {
     return core::wasm 
-        > WithCli()
         > rust::Chef(core::source_code, Join("cargo build --package integration_tests --target wasm32-unknown-unknown --profile ", profile))
+        > WithCli()
         > WorkingDir("./ci/integration_tests")
         > ToService(Join("natrix dev --port 3000 --allow-external --no-reload --profile ", profile))
         > HealthCheck("curl localhost:3000", 120);
@@ -35,8 +35,8 @@ def NatrixDev(profile) {
 
 def NatrixBuild() {
     dist = core::wasm
-        > WithCli()
         > rust::Chef(core::source_code, "cargo build --package integration_tests --target wasm32-unknown-unknown --profile release")
+        > WithCli()
         > WorkingDir("./ci/integration_tests")
         > Exec("natrix build")
         > Export("./dist");

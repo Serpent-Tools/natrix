@@ -2,19 +2,12 @@
 all-features = true
 exclude-dev = true
 
-[advisories]
-ignore = [
-    { id="RUSTSEC-2024-0436", reason="Used by lightningcss"}
-]
-
 [licenses]
 allow = [
     "MIT",
     "Zlib",
     "Apache-2.0",
     "MPL-2.0",
-    "Unicode-3.0",
-    "Unicode-DFS-2016",
     "ISC",
     "CC0-1.0",
     "BSD-3-Clause",

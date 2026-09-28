@@ -158,10 +158,7 @@ pub(crate) fn build_wasm(config: &options::BuildConfig) -> Result<PathBuf> {
         base_path: config.base_path.to_string(),
         invalidate,
     };
-    let settings = natrix_shared::macros::bincode::encode_to_vec(
-        settings,
-        natrix_shared::macros::bincode_config(),
-    )?;
+    let settings = natrix_shared::macros::serde_json::to_vec(&settings)?;
     let settings = data_encoding::BASE64_NOPAD.encode(&settings);
 
     let mut command = process::Command::new("cargo");

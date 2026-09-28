@@ -41,8 +41,7 @@ export all_lints = All(
     typos, 
     clippy_native, 
     clippy_wasm, 
-    minimal_versions
-    // FIX: Upgrade stuff that requires that.
-    // CargoDeny("natrix"),
-    // CargoDeny("natrix-cli")
+    minimal_versions,
+    CargoDeny("natrix"),
+    CargoDeny("natrix-cli")
 );

@@ -9,12 +9,11 @@ pub const MACRO_SETTINGS: &str = "NATRIX_MACRO_SETTINGS";
 /// Code used for macros and bundler
 #[cfg(feature = "macros")]
 pub mod macros {
-    pub use bincode;
+    pub use serde_json;
 
     /// The asset format
     // IMPORTANT: Macro assumes encoding this cant fail
-    // <https://docs.rs/bincode/latest/bincode/error/enum.EncodeError.html>
-    #[derive(bincode::Decode, bincode::Encode)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub enum MacroEmisson {
         /// An asset that needs bundling
         Asset {
@@ -26,7 +25,7 @@ pub mod macros {
     }
 
     /// The settings for the macros
-    #[derive(bincode::Decode, bincode::Encode)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Settings {
         /// The output dir for the macros
         pub output_dir: std::path::PathBuf,
@@ -34,11 +33,5 @@ pub mod macros {
         pub base_path: String,
         /// A attribute to be used for invalidating the macro outputs
         pub invalidate: u64,
-    }
-
-    /// the  bincode config to use
-    #[must_use]
-    pub fn bincode_config() -> impl bincode::config::Config {
-        bincode::config::standard()
     }
 }

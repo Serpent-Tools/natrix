@@ -5,10 +5,11 @@ base = rust::stable
     > rust::WithBinstall("mdbook")
     > rust::WithBinstall("mdbook-rustdoc-links");
 
-export links = base 
+export book = base 
     > rust::Chef(core::source_code, "cargo doc")
     > WorkingDir("./docs")
-    > Exec("mdbook build");
+    > Exec("mdbook build")
+    > Export("./book");
 
 export examples = base
     > rust::Chef(core::source_code, "cargo build -p natrix --all-features --tests")
@@ -18,4 +19,4 @@ export examples = base
     > WorkingDir("./docs")
     > Exec("mdbook test -L ../target/debug/deps");
 
-export all_book = All(links, examples);
+export all_book = All(book, examples);

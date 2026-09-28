@@ -78,7 +78,7 @@ static FILE_COUNTER: AtomicU32 = AtomicU32::new(0);
 
 /// Emit a file to the target directory
 fn emit_file(
-    content: natrix_shared::macros::MacroEmisson,
+    content: &natrix_shared::macros::MacroEmisson,
     settings: &natrix_shared::macros::Settings,
 ) {
     let first_use = FIRST_USE_IN_CRATE.fetch_and(false, Ordering::AcqRel);
@@ -110,11 +110,8 @@ fn emit_file(
         clippy::expect_used,
         reason = "We dont have any of the types that could cause errors"
     )]
-    let encoded = natrix_shared::macros::bincode::encode_to_vec(
-        content,
-        natrix_shared::macros::bincode_config(),
-    )
-    .expect("Failed to encode asset information");
+    let encoded = natrix_shared::macros::serde_json::to_vec(&content)
+        .expect("Failed to encode asset information");
 
     #[expect(
         clippy::expect_used,
@@ -192,12 +189,9 @@ pub fn asset(file_path: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .expect("Corrupt base64 in settings var");
 
     #[expect(clippy::expect_used, reason = "We should have a valid bincode config")]
-    let (settings, _): (natrix_shared::macros::Settings, _) =
-        natrix_shared::macros::bincode::decode_from_slice(
-            &settings,
-            natrix_shared::macros::bincode_config(),
-        )
-        .expect("Failed to decode settings");
+    let settings: natrix_shared::macros::Settings =
+        natrix_shared::macros::serde_json::from_slice(&settings)
+            .expect("Failed to decode settings");
 
     let url = format!("{}/{target}", settings.base_path);
 
@@ -207,7 +201,7 @@ pub fn asset(file_path: proc_macro::TokenStream) -> proc_macro::TokenStream {
         emitted_path: target,
     };
 
-    emit_file(asset, &settings);
+    emit_file(&asset, &settings);
     result
 }
 

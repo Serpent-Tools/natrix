@@ -4,3 +4,6 @@ import "./lints.snek" as lint;
 import "./book.snek" as book;
 
 export DEFAULT = All(unit::all_unit, integration::all_integration, lint::all_lints, book::all_book);
+export FAST = All(unit::all_unit, lint::all_lints, book::all_book);
+
+export BOOK = ToHost(book::book, "./target/book");

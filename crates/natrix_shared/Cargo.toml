@@ -9,7 +9,8 @@ description = "Shared code for Natrix framework."
 workspace = true
 
 [dependencies]
-bincode = { version = "2.0.1", optional = true }
+serde = { workspace = true, features = ["derive", "std"], optional = true }
+serde_json = { workspace = true, optional = true }
 
 [features]
-macros = ["dep:bincode"]
+macros = ["dep:serde", "dep:serde_json"]
