@@ -1,0 +1,48 @@
+import "./core.snek" as core;
+import "@/rust.snek" as rust;
+
+export rustfmt = rust::FmtCheck(core::source_code, rust::nightly);
+export typos = core::debian
+    > rust::WithBinstall("typos-cli", "typos")
+    > WorkingDir("/app")
+    > With(core::source_code, ".")
+    > Exec("typos");
+
+// TODO: Add more lints
+export clippy_native = rust::stable
+    > Exec("rustup component add clippy")
+    > rust::WithBinstall("cargo-hack")
+    > rust::WithChef(core::source_code, "cargo hack clippy --each-feature --all --all-targets -- -Dwarnings");
+
+export clippy_wasm = core::wasm
+    > Exec("rustup component add clippy")
+    > rust::WithBinstall("cargo-hack")
+    > rust::WithChef(core::source_code, "cargo hack clippy --each-feature --package natrix --target wasm32-unknown-unknown -- -Dwarnings");
+
+export minimal_versions = rust::nightly
+    > rust::WithBinstall("cargo-minimal-versions")
+    > rust::WithBinstall("cargo-hack") // used by minimal-versions internally
+    > rust::Chef(core::source_code, "cargo minimal-versions check --package natrix --direct --all-features")
+    > Exec("cargo check --package natrix --all-features");
+
+// TODO: Make more strict
+def CargoDeny(crate) {
+    return rust::stable
+        > rust::WithBinstall("cargo-deny")
+        > With(core::source_code, ".")
+        > WorkingDir("./crates")
+        > WorkingDir(crate)
+        > Exec("cargo deny check");
+}
+
+
+export all_lints = All(
+    rustfmt, 
+    typos, 
+    clippy_native, 
+    clippy_wasm, 
+    minimal_versions
+    // FIX: Upgrade stuff that requires that.
+    // CargoDeny("natrix"),
+    // CargoDeny("natrix-cli")
+);

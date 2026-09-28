@@ -26,9 +26,6 @@ private_bounds = { level = "allow"}
 unfulfilled_lint_expectations = "warn"
 unsafe_code = "deny"
 
-# https://github.com/proptest-rs/proptest/issues/447
-non_local_definitions = "allow"
-
 [workspace.lints.clippy]
 pedantic = {level = "warn", priority = 1}
 todo = "deny"

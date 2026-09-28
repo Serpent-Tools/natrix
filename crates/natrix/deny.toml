@@ -3,6 +3,7 @@ targets = [
     "wasm32-unknown-unknown",
 ]
 all-features = true
+exclude-dev = true
 
 [licenses]
 allow = [

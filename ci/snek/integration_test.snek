@@ -1,0 +1,67 @@
+import "./core.snek" as core;
+import "@/rust.snek" as rust;
+
+cli = rust::stable
+    > rust::WithChef(core::source_code, "cargo build --package natrix-cli")
+    > Export("./target/debug/natrix");
+
+def WithCli(container) {
+    return With(container, cli, "/bin/natrix");
+}
+
+def ProjectGen(base, flags) {
+    project = base
+        > WithCli()
+        > With(core::source_code, "/install")
+        > Env("NATRIX_PATH", "/install/crates/natrix")
+        > WorkingDir("/")
+        > Exec(Join("natrix new project", flags))
+        > WorkingDir("/project");
+
+    build = project > Exec("natrix build");
+    test = project > Exec("wasm-pack test --headless --chrome");
+
+    return All(build, test);
+}
+
+def NatrixDev(profile) {
+    return core::wasm 
+        > WithCli()
+        > rust::Chef(core::source_code, Join("cargo build --package integration_tests --target wasm32-unknown-unknown --profile ", profile))
+        > WorkingDir("./ci/integration_tests")
+        > ToService(Join("natrix dev --port 3000 --allow-external --no-reload --profile ", profile))
+        > HealthCheck("curl localhost:3000", 120);
+}
+
+def NatrixBuild() {
+    dist = core::wasm
+        > WithCli()
+        > rust::Chef(core::source_code, "cargo build --package integration_tests --target wasm32-unknown-unknown --profile release")
+        > WorkingDir("./ci/integration_tests")
+        > Exec("natrix build")
+        > Export("./dist");
+
+    return ImageService("nginx:alpine") > With(dist, "/usr/share/nginx/html/dist");
+}
+
+def ChromeDriver(page) {
+    return core::wasm
+        > WithService(page, "page.local")
+        > ToService("chromedriver --port=8000 --allowed-ips= --allowed-origins=* --remote-debugging-pipe --user-data-dir=/tmp/chrome");
+}
+
+def IntegrationTest(page, flags) {
+    return rust::stable
+        > rust::WithBinstall("cargo-nextest")
+        > rust::Chef(core::source_code, Join("cargo nextest run -p integration_tests", flags, " || true"))
+        > WithService(ChromeDriver(page), "chrome.local")
+        > Exec(Join("cargo nextest run -j 1 --fail-fast -p integration_tests ", flags));
+}
+    
+export all_integration = All(
+    ProjectGen(core::wasm > Exec("rustup default stable"), " --stable"),
+    ProjectGen(core::wasm, ""),
+    IntegrationTest(NatrixDev("dev"), ""),
+    IntegrationTest(NatrixDev("release"), ""),
+    IntegrationTest(NatrixBuild(), "--features build_test")
+);

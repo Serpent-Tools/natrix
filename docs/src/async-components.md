@@ -1,19 +1,19 @@
 # Async
 
 Async is a really important part of any web application, as it's how you do IO and talk to other services or your backend.
-Natrix provides [`AsyncCtxHandle`](reactivity::AsyncCtxHandle), via the [`.use_async`](prelude::EventCtx::use_async) Method.
+Natrix provides [`AsyncCtxHandle`](natrix::reactivity::AsyncCtxHandle), via the [`.use_async`](natrix::prelude::EventCtx::use_async) Method.
 
 ## What is a `AsyncCtxHandle`?
 
 Internally natrix stores the state as a `Rc<RefCell<...>>`, `AsyncCtxHandle` is a wrapper around a [`Weak<...>`](std::rc::Weak) version of the same state, that exposes a limited safe api to allow you to borrow the state at arbitrary points in the code.
 
-The main method on a async handle is the [`.update`](reactivity::AsyncCtxHandle::update) method, which allows you to borrow the state mutably. This returns a `Option<...>`, if this returns [`None`](std::option::Option::None), then the root element is dropped and you should in most case return/cancel the current task.
+The main method on a async handle is the [`.update`](natrix::reactivity::AsyncCtxHandle::update) method, which allows you to borrow the state mutably. This returns a `Option<...>`, if this returns [`None`], then the root element is dropped and you should in most case return/cancel the current task.
 
-On borrowing (via [`.update`](reactivity::AsyncCtxHandle::update)) the framework will clear the reactive state of signals, and will trigger a reactive update on closure return. (i.e the framework will keep the UI in sync with changes). But this also means you should not borrow this in a loop, and should prefer to borrow it for the maximum amount of time that doesn't hold it across a yield point.
+On borrowing (via [`.update`](natrix::reactivity::AsyncCtxHandle::update)) the framework will clear the reactive state of signals, and will trigger a reactive update on closure return. (i.e the framework will keep the UI in sync with changes). But this also means you should not borrow this in a loop, and should prefer to borrow it for the maximum amount of time that doesn't hold it across a yield point.
 
 ## `.use_async`
 
-The [`.use_async`](prelude::EventCtx::use_async) method takes a async closure and schedules it to run with a [`AsyncCtxhandle`](reactivity::AsyncCtxHandle) borrowed from the state. The closure should return `Option<()>`, This is to allow use of `?` to return early if the render tree is dropped.
+The [`.use_async`](natrix::prelude::EventCtx::use_async) method takes a async closure and schedules it to run with a [`AsyncCtxhandle`](natrix::reactivity::AsyncCtxHandle) borrowed from the state. The closure should return `Option<()>`, This is to allow use of `?` to return early if the render tree is dropped.
 
 ```rust
 # extern crate natrix;

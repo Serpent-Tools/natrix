@@ -1,0 +1,39 @@
+import "@/rust.snek" as rust;
+
+export source_code = FromHost(".");
+export debian = Image("debian:bookworm-slim");
+
+chrome_version = "154.0.8037.57";
+download = debian
+    > Exec("apt update")
+    > Exec("apt install -y curl unzip");
+
+def DownloadZip(kind) {
+    return download
+        > Exec(Join(
+            "curl -sSl https://storage.googleapis.com/chrome-for-testing-public/",
+            chrome_version, "/linux64/", kind, ".zip",   
+            " -o ", "/tmp/output.zip"
+        ))
+        > Exec("unzip /tmp/output.zip -d /tmp/");
+}
+
+chromedriver = DownloadZip("chromedriver-linux64") > Export("/tmp/chromedriver-linux64/chromedriver");
+chrome = DownloadZip("chrome-linux64") > Export("/tmp/chrome-linux64/");
+
+export wasm = rust::nightly
+    > Exec("apt update")
+    > Exec("apt install -y binaryen")
+    > Exec("rustup target add wasm32-unknown-unknown")
+    > Exec("rustup component add rust-src")
+    > rust::WithBinstall("wasm-bindgen-cli", "wasm-bindgen")
+    > rust::WithBinstall("wasm-bindgen-cli", "wasm-bindgen-test-runner")
+    > rust::WithBinstall("wasm-pack")
+    > With(chromedriver, "/bin/chromedriver")
+    > With(chrome, "/opt/chrome")
+    > Exec("
+        while read pkg; do
+          apt-get satisfy -y --no-install-recommends \"${pkg}\";
+        done < /opt/chrome/deb.deps;
+    ")
+    > Exec("ln -s /opt/chrome/chrome /bin/chrome");

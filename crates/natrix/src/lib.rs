@@ -82,9 +82,11 @@ pub use reactivity::mount::mount;
 /// Public exports of internal data structures for `natrix_macros` (and `macro_rules`) to use in generated code.
 #[doc(hidden)]
 pub mod macro_ref {
+    pub use const_base;
+    pub use const_sha1;
     #[cfg(feature = "_internal_collect_css")]
     pub use inventory;
-    pub use {const_base, const_sha1, log};
+    pub use log;
 
     pub use super::css;
     pub use super::dom::element::Element;

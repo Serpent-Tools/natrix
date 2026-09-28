@@ -797,8 +797,8 @@ impl<C: State> ToAttribute<C> for AutoComplete {
                 }
                 if let Some(detail) = detail {
                     match detail {
-                        DetailTokenPart::Contact(recpient, kind) => {
-                            result.push_str(recpient.render());
+                        DetailTokenPart::Contact(recipient, kind) => {
+                            result.push_str(recipient.render());
                             result.push(' ');
                             result.push_str(kind.render());
                         }

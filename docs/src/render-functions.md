@@ -79,7 +79,7 @@ Now only the name part will update when `user_name` changes, not the entire gree
 
 ## Event Handlers
 
-You can pass event handlers to render functions using the [`EventHandler`](dom::events::EventHandler) trait:
+You can pass event handlers to render functions using the [`EventHandler`](natrix::dom::events::EventHandler) trait:
 
 ```rust
 # extern crate natrix;
@@ -138,8 +138,8 @@ fn render_app() -> impl Element<App> {
 ## Generic state access.
 What if you want a more reusable component, lets say a slider?
 For this rust just uses closures, kinda.
-Pure rust closures dont allow for combined read and mut paths, so natrix uses [`Ref`](access::Ref), see the [Getters Chapther](ref.md) for detailed docs on them.
-[`Getter`](access::Getter) is a ergonomic "Alias Trait" for closures that take a `Ref` as the first argument, are cloneable, and are `'static`, all of which basically all closures in natrix need or might need at some point (and basically all closures will be), it saves you from having to write longer bounds, as well as needing to propagate a `Clone` bound after refactors as `Clone` is the default with `Getter`.  
+Pure rust closures dont allow for combined read and mut paths, so natrix uses [`Ref`](natrix::access::Ref), see the [Getters Chapther](ref.md) for detailed docs on them.
+[`Getter`](natrix::access::Getter) is a ergonomic "Alias Trait" for closures that take a `Ref` as the first argument, are cloneable, and are `'static`, all of which basically all closures in natrix need or might need at some point (and basically all closures will be), it saves you from having to write longer bounds, as well as needing to propagate a `Clone` bound after refactors as `Clone` is the default with `Getter`.  
 
 ```rust
 # extern crate natrix;

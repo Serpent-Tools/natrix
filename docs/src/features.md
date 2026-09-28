@@ -12,13 +12,13 @@ The intent is that even if a library uses all the below features it should not b
 * `async`
 
 ### `console_log`
-Automatically sets up [`console_log`](https://crates.io/crates/console_log) on [`mount`](reactivity::mount::mount).
+Automatically sets up [`console_log`](https://crates.io/crates/console_log) on [`mount`](natrix::reactivity::mount::mount).
 
 ### `async`
-Enables the use of [`ctx.use_async`](prelude::EventCtx::use_async) 
+Enables the use of [`ctx.use_async`](natrix::prelude::EventCtx::use_async) 
 
 ### `async_utils`
-Enables the various async wrappers for browser apis in [`async_utils`](async_utils)
+Enables the various async wrappers for browser apis in [`async_utils`](natrix::async_utils)
 
 ### `test_utils`
 Various testing utilities, this should be enabled via a `[dev-dependencies]`.

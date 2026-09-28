@@ -1,0 +1,21 @@
+import "./core.snek" as core;
+import "@/rust.snek" as rust;
+
+base = rust::stable
+    > rust::WithBinstall("mdbook")
+    > rust::WithBinstall("mdbook-rustdoc-links");
+
+export links = base 
+    > rust::Chef(core::source_code, "cargo doc")
+    > WorkingDir("./docs")
+    > Exec("mdbook build");
+
+export examples = base
+    > rust::Chef(core::source_code, "cargo build -p natrix --all-features --tests")
+    // Ensure there is only one copy of natrix in the target folder
+    > Exec("rm -f target/debug/deps/*natrix*") 
+    > Exec("cargo build -p natrix --all-features --tests")
+    > WorkingDir("./docs")
+    > Exec("mdbook test -L ../target/debug/deps");
+
+export all_book = All(links, examples);

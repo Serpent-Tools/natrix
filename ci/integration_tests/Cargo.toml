@@ -27,3 +27,4 @@ build_test = []
 __natrix_internal_bundle = ["natrix/_internal_bundle"]
 __natrix_internal_no_ssg = ["natrix/_internal_no_ssg"]
 
+[lints]

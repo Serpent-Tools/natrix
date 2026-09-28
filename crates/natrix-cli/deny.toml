@@ -1,8 +1,6 @@
 [graph]
-targets = [
-    "x86_64-unknown-linux",
-]
 all-features = true
+exclude-dev = true
 
 [advisories]
 ignore = [
@@ -20,7 +18,8 @@ allow = [
     "ISC",
     "CC0-1.0",
     "BSD-3-Clause",
-    "BSL-1.0"
+    "BSL-1.0",
+    "Unicode-3.0"
 ]
 
 [bans]

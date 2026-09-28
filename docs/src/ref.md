@@ -1,6 +1,6 @@
 # Getters
 
-Natrix uses [`Ref`](access::Ref), which is effectively a enum over `&T` and `&mut T`.
+Natrix uses [`Ref`](natrix::access::Ref), which is effectively a enum over `&T` and `&mut T`.
 This is to make getters easier to work with and write.
 
 ## Why?
@@ -24,7 +24,7 @@ fn counter(value: impl Fn(Ref<App>) -> Ref<u8> + 'static) -> impl Element<App> {
 ```
 
 ### `Getter`
-the [`Getter`](access::Getter) trait is a alias for the most common form of getter.
+the [`Getter`](natrix::access::Getter) trait is a alias for the most common form of getter.
 `impl Getter<A, B>` is `impl Fn(Ref<A>) -> Ref<B> + Clone + 'static`, 
 
 ```rust
@@ -45,7 +45,7 @@ fn counter(value: impl Getter<App, u8>) -> impl Element<App> {
 
 ### `.call_read`/`.call_mut`
 Calling these closures directly would require unwrapping on the result, even tho all valid closures should return a know variant.
-For this we provide the [`RefClosure`](access::RefClosure) trait, which provides the `.call_read` and `.call_mut` methods
+For this we provide the [`RefClosure`](natrix::access::RefClosure) trait, which provides the `.call_read` and `.call_mut` methods
 which wrap your reference in the appropriate variant and unwraps on the result. 
 
 ```rust
@@ -62,11 +62,11 @@ fn counter(value: impl Getter<App, u8>) -> impl Element<App> {
 }
 ```
 `RefClosure` is implemented for most closures that take a `Ref` and return a type *containing* a `Ref`.
-More specifically, if the return type implements [`Downgrade`](access::Downgrade).
+More specifically, if the return type implements [`Downgrade`](natrix::access::Downgrade).
 For example using `.call_read` with a closure returning `Option<Ref<T>>` will yield a `Option<&T>`
 
 ### `.map`
-the [`.map`](access::Ref::map) method takes two closures, a read and a write one, and apply them to the `Ref` depending on the current variant.
+the [`.map`](natrix::access::Ref::map) method takes two closures, a read and a write one, and apply them to the `Ref` depending on the current variant.
 ```rust
 # extern crate natrix;
 # use natrix::prelude::*;
@@ -116,13 +116,13 @@ The `field!` macro also support a expression as the value, but this requires usi
 `field!((user_getter(ctx)).favorite_book.title)`
 
 ### `Deref`
-Naturally you will often hit `Signal` in your access chains, [`.deref`](access::Ref::deref) can be used if the value implements both `Deref` and `DerefMut`, which `Signal` does. Or for example if you have a `String` and a component wants `Ref<str>`.
+Naturally you will often hit `Signal` in your access chains, [`.deref`](natrix::access::Ref::deref) can be used if the value implements both `Deref` and `DerefMut`, which `Signal` does. Or for example if you have a `String` and a component wants `Ref<str>`.
 
 
 ### `.project`
-Often it can be useful to transform from `Ref<Option<T>>` to `Option<Ref<T>>`, this is where [`.project`](access::Ref::project) and the [`Project`](access::Project) trait come in.
+Often it can be useful to transform from `Ref<Option<T>>` to `Option<Ref<T>>`, this is where [`.project`](natrix::access::Ref::project) and the [`Project`](natrix::access::Project) trait come in.
 They allow you to do these transformations in your getters, for example if a function wants `Option<Ref<T>>` and you have a `Ref<Option<T>>` you can use `.project()`.
-This is very often used with [`.guard_*`](prelude::RenderCtx::guard_option).
+This is very often used with [`.guard_*`](natrix::prelude::RenderCtx::guard_option).
 
 ### `with!`
 Often we dont want to add `Copy` bounds to the getters without reason, but cloning gets annoying. You usually find yourself needing to do:

@@ -1,7 +1,6 @@
 [book]
 authors = ["Viv"]
 language = "en"
-multilingual = false
 src = "src"
 title = "Natrix"
 
@@ -11,11 +10,10 @@ edition = "2024"
 [output.html.playground]
 runnable = false
 
-[preprocessor.callouts]
-[preprocessor.rustdoc-link]
-manifest-dir = "../crates/natrix"
+[preprocessor.rustdoc-links]
 after = ["links"]
-cargo-features = ["all"]
-cache-dir = "../target/doc-cache"
+renderers = ["html"]
 fail-on-warnings = "always"
-#rust-analyzer-timeout = 300 # 5 minutes
+
+[preprocessor.rustdoc-links.build]
+all-features = true
