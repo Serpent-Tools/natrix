@@ -15,20 +15,20 @@ use crate::{options, utils};
 
 /// A renaming map for the wasm-bindgen glue code.
 #[derive(Debug)]
-pub(crate) struct RenameMap(HashMap<Box<str>, Box<str>>);
+pub struct RenameMap(HashMap<Box<str>, Box<str>>);
 
 /// A visitor to rename ast nodes
-struct RenameVisitor<'a> {
+struct RenameVisitor<'allocator> {
     /// The allocator to use
-    allocator: &'a oxc::allocator::Allocator,
+    allocator: &'allocator oxc::allocator::Allocator,
     /// The resulting mapping.
     mapping: RenameMap,
 }
 
-impl<'a> oxc::ast_visit::VisitMut<'a> for RenameVisitor<'a> {
+impl<'allocator> oxc::ast_visit::VisitMut<'allocator> for RenameVisitor<'allocator> {
     fn visit_static_member_expression(
         &mut self,
-        it: &mut oxc::ast::ast::StaticMemberExpression<'a>,
+        it: &mut oxc::ast::ast::StaticMemberExpression<'allocator>,
     ) {
         oxc::ast_visit::walk_mut::walk_static_member_expression(self, it);
 
@@ -48,7 +48,7 @@ impl<'a> oxc::ast_visit::VisitMut<'a> for RenameVisitor<'a> {
         }
     }
 
-    fn visit_property_key(&mut self, it: &mut oxc::ast::ast::PropertyKey<'a>) {
+    fn visit_property_key(&mut self, it: &mut oxc::ast::ast::PropertyKey<'allocator>) {
         oxc::ast_visit::walk_mut::walk_property_key(self, it);
 
         let Some(current_name) = it.static_name() else {
@@ -68,7 +68,7 @@ impl<'a> oxc::ast_visit::VisitMut<'a> for RenameVisitor<'a> {
 }
 
 /// Run wasmbindgen to generate the glue
-pub(crate) fn wasm_bindgen(
+pub fn wasm_bindgen(
     config: &options::BuildConfig,
     wasm_file: &PathBuf,
 ) -> Result<(PathBuf, PathBuf)> {
@@ -99,7 +99,7 @@ pub(crate) fn wasm_bindgen(
 }
 
 /// Minimize the given js file
-pub(crate) fn minimize_js(js_file: &PathBuf, mapping: RenameMap) -> Result<(), anyhow::Error> {
+pub fn minimize_js(js_file: &PathBuf, mapping: RenameMap) -> Result<(), anyhow::Error> {
     let spinner = utils::create_spinner("🗜️ Minimizing JS")?;
 
     let js_code = fs::read_to_string(js_file)?;
@@ -133,15 +133,15 @@ pub(crate) fn minimize_js(js_file: &PathBuf, mapping: RenameMap) -> Result<(), a
             ..Default::default()
         })
         .with_scoping(symbols);
-    let js_code = codegen.build(&program).code;
-    std::fs::write(js_file, js_code)?;
+    let minified_js_code = codegen.build(&program).code;
+    std::fs::write(js_file, minified_js_code)?;
 
     spinner.finish();
     Ok(())
 }
 
 /// Build the project wasm
-pub(crate) fn build_wasm(config: &options::BuildConfig) -> Result<PathBuf> {
+pub fn build_wasm(config: &options::BuildConfig) -> Result<PathBuf> {
     let rustc_version_meta = rustc_version::version_meta()?;
     let rustc_is_nightly = rustc_version_meta.channel == rustc_version::Channel::Nightly;
 
@@ -196,7 +196,7 @@ pub(crate) fn build_wasm(config: &options::BuildConfig) -> Result<PathBuf> {
 }
 
 /// Return the path to the first wasm file in the target folder
-pub(crate) fn find_wasm(config: &options::BuildConfig) -> Result<PathBuf> {
+fn find_wasm(config: &options::BuildConfig) -> Result<PathBuf> {
     let target = utils::find_target()?;
     let name = utils::get_project_name()?;
     let target = target
@@ -215,11 +215,9 @@ pub(crate) fn find_wasm(config: &options::BuildConfig) -> Result<PathBuf> {
 }
 
 /// Search the given directory for a wasm file
-pub(crate) fn search_dir_for_wasm(
-    target: &Path,
-    name: &str,
-) -> Result<Option<PathBuf>, anyhow::Error> {
-    let expected_file_name = format!("{name}.wasm");
+fn search_dir_for_wasm(target: &Path, target_name: &str) -> Result<Option<PathBuf>, anyhow::Error> {
+    let expected_file_name = format!("{target_name}.wasm");
+
     for file in target.read_dir()?.flatten() {
         let path = file.path();
         if let Some(name) = path.file_name() {
@@ -233,7 +231,7 @@ pub(crate) fn search_dir_for_wasm(
 }
 
 /// Optimize the given wasm file
-pub(crate) fn optimize_wasm(wasm_file: &PathBuf) -> Result<RenameMap, anyhow::Error> {
+pub fn optimize_wasm(wasm_file: &PathBuf) -> Result<RenameMap, anyhow::Error> {
     let spinner = utils::create_spinner("🔎 Optimize wasm")?;
 
     let mut command = process::Command::new("wasm-opt");

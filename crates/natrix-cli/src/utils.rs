@@ -13,7 +13,7 @@ use crate::options;
 use crate::prelude::*;
 
 /// Create a spinner with the given msg
-pub(crate) fn create_spinner(msg: &str) -> Result<ProgressBar> {
+pub fn create_spinner(msg: &str) -> Result<ProgressBar> {
     let spinner = ProgressBar::new_spinner().with_style(
         ProgressStyle::with_template(&format!(
             "{{spinner:.red}} {} {{msg}}",
@@ -31,10 +31,7 @@ pub(crate) fn create_spinner(msg: &str) -> Result<ProgressBar> {
     clippy::needless_pass_by_value,
     reason = "The spinner isnt usable after this"
 )]
-pub(crate) fn run_with_spinner(
-    mut command: process::Command,
-    spinner: ProgressBar,
-) -> Result<String> {
+pub fn run_with_spinner(mut command: process::Command, spinner: ProgressBar) -> Result<String> {
     command
         .stdout(process::Stdio::piped())
         .stderr(process::Stdio::piped());
@@ -75,7 +72,7 @@ pub(crate) fn run_with_spinner(
     dead_code,
     reason = "No longer used, but might be useful in the future"
 )]
-pub(crate) fn is_feature_enabled(feature: &str, is_default: bool) -> Result<bool> {
+pub fn is_feature_enabled(feature: &str, is_default: bool) -> Result<bool> {
     let metadata = cargo_metadata::MetadataCommand::new().no_deps().exec()?;
     let packages = metadata.workspace_default_packages();
     let package = packages.first().ok_or(anyhow!("No package found"))?;
@@ -108,7 +105,7 @@ fn natrix_version() -> Result<semver::VersionReq> {
 }
 
 /// Does the natrix version match the cli version?
-pub(crate) fn is_natrix_version_matching() -> Result<bool> {
+pub fn is_natrix_version_matching() -> Result<bool> {
     let natrix_version = natrix_version()?;
     let cli_version = semver::Version::parse(env!("CARGO_PKG_VERSION"))?;
 
@@ -116,14 +113,14 @@ pub(crate) fn is_natrix_version_matching() -> Result<bool> {
 }
 
 /// Find the natrix target folder
-pub(crate) fn find_target_natrix(mode: options::BuildProfile) -> Result<PathBuf> {
+pub fn find_target_natrix(mode: options::BuildProfile) -> Result<PathBuf> {
     let target = find_target()?;
     let project = get_project_name()?;
     Ok(target.join(format!("natrix-{project}-{}", mode.readable())))
 }
 
 /// Get the current target project name
-pub(crate) fn get_project_name() -> Result<String> {
+pub fn get_project_name() -> Result<String> {
     let metadata = cargo_metadata::MetadataCommand::new().no_deps().exec()?;
     let packages = metadata.workspace_default_packages();
     let package = packages.first().ok_or(anyhow!("No package found"))?;
@@ -138,7 +135,7 @@ pub(crate) fn get_project_name() -> Result<String> {
 }
 
 /// Find the target folder
-pub(crate) fn find_target() -> Result<PathBuf> {
+pub fn find_target() -> Result<PathBuf> {
     let metadata = cargo_metadata::MetadataCommand::new().no_deps().exec()?;
     let target = metadata.target_directory;
     let target = PathBuf::from(target);
@@ -146,7 +143,7 @@ pub(crate) fn find_target() -> Result<PathBuf> {
 }
 
 /// get the filename of a path
-pub(crate) fn get_filename(file: &Path) -> Result<Cow<'_, str>> {
+pub fn get_filename(file: &Path) -> Result<Cow<'_, str>> {
     let file_name = file
         .file_name()
         .ok_or(anyhow!("File name not found"))?

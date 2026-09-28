@@ -48,7 +48,7 @@ impl<S: State> ReactiveNode<S> {
             keep_alive: &mut self.keep_alive,
             hooks: &mut self.hooks,
         };
-        element.render(ctx, &mut state)
+        element.render_static(ctx, &mut state)
     }
 
     /// Create a new `ReactiveNode` registering the initial dependencies and returning both the

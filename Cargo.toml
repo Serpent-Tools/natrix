@@ -25,22 +25,76 @@ strip = "symbols"
 
 [workspace.lints.rust]
 missing_docs = "warn"
-private_interfaces = { level = "allow"}
-private_bounds = { level = "allow"}
 unfulfilled_lint_expectations = "warn"
 unsafe_code = "deny"
+non_ascii_idents = "deny"
+
+# TODO: most of the modules affected by this are to be refactors (attributes/elements/classes/css) into one unified mechanic so lets ignore these lints for now. 
+private_interfaces = "allow"
 
 [workspace.lints.clippy]
 pedantic = {level = "warn", priority = 1}
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+
+
+# robust code
 todo = "deny"
 unreachable = "deny"
+unimplemented = "deny"
 unwrap_used = "deny"
 indexing_slicing = "deny"
 dbg_macro = "deny"
 expect_used = "deny"
-allow_attributes = "deny"
-allow_attributes_without_reason = "deny"
 arithmetic_side_effects = "deny"
+exit = "deny"
+string_slice = "deny"
+undocumented_unsafe_blocks = "deny"
 missing_docs_in_private_items = "warn"
-type_complexity = "allow"
 panic = { level = "deny", priority = 0 }
+
+# TODO: most of the modules affected by this are to be refactors (attributes/elements/classes/css) into one unified mechanic so lets ignore these lints for now. 
+field_scoped_visibility_modifiers = "allow"
+type_complexity = "allow" # TODO: didnt seem too complex
+
+# niche stuff
+assertions_on_result_states = "warn"
+cargo_common_metadata = "warn"
+cfg_not_test = "warn"
+clone_on_ref_ptr = "warn"
+empty_drop = "deny"
+empty_enum_variants_with_brackets = "warn"
+filetype_is_file = "warn"
+float_cmp_const = "warn"
+infinite_loop = "warn"
+lossy_float_literal = "warn"
+missing_assert_message = "warn"
+mixed_read_write_in_expression = "warn"
+multiple_unsafe_ops_per_block = "warn"
+mutex_atomic = "warn"
+needless_raw_strings = "warn"
+negative_feature_names = "warn"
+partial_pub_fields = "warn"
+redundant_pub_crate = "warn"
+pathbuf_init_then_push = "warn"
+precedence_bits = "warn"
+rc_buffer = "warn"
+rc_mutex = "warn"
+redundant_feature_names = "warn"
+redundant_test_prefix = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+return_and_then = "warn"
+same_name_method = "warn"
+self_named_module_files = "deny"
+shadow_unrelated = "warn"
+single_char_lifetime_names = "warn"
+str_to_string = "warn"
+suspicious_xor_used_as_pow = "warn"
+tests_outside_test_module = "deny"
+try_err = "warn"
+unneeded_field_pattern = "warn"
+use_debug = "warn"
+verbose_file_reads = "warn"
+wildcard_dependencies = "deny"
+min_ident_chars = "warn"
+

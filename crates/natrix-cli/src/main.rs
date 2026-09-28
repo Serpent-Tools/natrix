@@ -9,10 +9,12 @@ mod prelude {
     pub use owo_colors::Stream::Stdout;
 }
 
+// TODO: Make these macros call each other
+
 /// Helper macro to chain multiple styles and colors from ``owo_colors`` (and println! it), checks if colors are supported.
 macro_rules! uwu {
     ($text:expr, $($style:ident).+) => {
-        print!("{}", $text.if_supports_color(Stdout, |s| s$(.$style())+.to_string()));
+        print!("{}", $text.if_supports_color(Stdout, |string| string$(.$style())+.to_string()));
     };
     ($text:expr) => {
         print!("{}", $text);
@@ -24,7 +26,7 @@ macro_rules! uwuln {
     ($text:expr, $($style:ident).+) => {
         println!(
             "{}",
-            ($text).if_supports_color(Stdout, |s| s$(.$style())+.to_string())
+            ($text).if_supports_color(Stdout, |string| string$(.$style())+.to_string())
         );
     };
     ($text:expr) => {
@@ -35,7 +37,7 @@ macro_rules! uwuln {
 /// Helper macro to chain multiple styles and colors from ``owo_colors`` (but not print it), checks if colors are supported.
 macro_rules! uwu_style {
     ($text:expr, $($style:ident).+) => {
-        ($text).if_supports_color(Stdout, |s| s$(.$style())+.to_string())
+        ($text).if_supports_color(Stdout, |string| string$(.$style())+.to_string())
     };
     ($text:expr) => {
         ($text).to_string()

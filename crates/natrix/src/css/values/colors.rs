@@ -64,10 +64,7 @@ impl Color {
 
         Some(match self {
             Self::Rgb {
-                red,
-                green,
-                blue,
-                alpha: _,
+                red, green, blue, ..
             } => Self::Rgb {
                 red,
                 green,
@@ -78,7 +75,7 @@ impl Color {
                 hue,
                 saturation,
                 lightness,
-                alpha: _,
+                ..
             } => Self::Hsl {
                 hue,
                 saturation,
@@ -89,7 +86,7 @@ impl Color {
                 lightness,
                 chroma,
                 hue,
-                alpha: _,
+                ..
             } => Self::Oklch {
                 lightness,
                 chroma,
@@ -219,8 +216,9 @@ impl CssPropertyValue for Color {
     type Kind = Color;
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
-pub(crate) mod tests {
+#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
+mod tests {
     use insta::assert_snapshot;
     use proptest::prelude::*;
 

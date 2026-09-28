@@ -9,13 +9,13 @@ use crate::prelude::*;
 
 /// Describes the translation from asset paths to wanted url
 #[derive(Default)]
-pub(crate) struct AssetManifest {
+pub struct AssetManifest {
     /// A mapping from runtime url to source path
-    pub(crate) mapping: HashMap<String, PathBuf>,
+    pub mapping: HashMap<String, PathBuf>,
 }
 
 /// Collect the outputs of the macros
-pub(crate) fn collect_macro_output(config: &options::BuildConfig) -> Result<AssetManifest> {
+pub fn collect_macro_output(config: &options::BuildConfig) -> Result<AssetManifest> {
     let mut asset_files = Vec::new();
 
     for file in get_macro_output_files(config)? {
@@ -32,10 +32,7 @@ pub(crate) fn collect_macro_output(config: &options::BuildConfig) -> Result<Asse
 }
 
 /// Copy asset manifest to dist folder
-pub(crate) fn copy_assets_to_dist(
-    config: &options::BuildConfig,
-    manifest: &AssetManifest,
-) -> Result<()> {
+pub fn copy_assets_to_dist(config: &options::BuildConfig, manifest: &AssetManifest) -> Result<()> {
     let spinner = utils::create_spinner("📂 Copying Assets")?;
     for (wanted_url, file) in &manifest.mapping {
         let target_file = config.dist.join(wanted_url);
@@ -50,7 +47,7 @@ pub(crate) fn copy_assets_to_dist(
 }
 
 /// Collect the `.asset` files into a asset manifest
-pub(crate) fn collect_asset_manifest(asset_files: Vec<PathBuf>) -> Result<AssetManifest> {
+pub fn collect_asset_manifest(asset_files: Vec<PathBuf>) -> Result<AssetManifest> {
     let spinner = utils::create_spinner("📋 Parsing Asset Manifest")?;
 
     let mut mapping = HashMap::with_capacity(asset_files.len());
@@ -66,7 +63,7 @@ pub(crate) fn collect_asset_manifest(asset_files: Vec<PathBuf>) -> Result<AssetM
 }
 
 /// Get all files in the sub folders of `MACRO_OUTPUT_DIR`
-pub(crate) fn get_macro_output_files(
+pub fn get_macro_output_files(
     config: &options::BuildConfig,
 ) -> Result<impl Iterator<Item = PathBuf>> {
     Ok(fs::read_dir(config.temp_dir.join(MACRO_OUTPUT_DIR))?

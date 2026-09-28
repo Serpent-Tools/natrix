@@ -59,11 +59,11 @@ impl<S: State> InnerCtx<S> {
 ///
 /// This holds a mutable context internally to facilitate rendering features such as `.watch`,
 /// but only exposes read-only access to the user state through `Deref`.
-pub struct RenderCtx<'c, 's, S: State> {
+pub struct RenderCtx<'context, 'state, S: State> {
     /// The inner context
-    pub(super) ctx: &'c mut InnerCtx<S>,
+    pub(super) ctx: &'context mut InnerCtx<S>,
     /// The render state for tracking hooks and keep-alive objects
-    pub(super) render_state: RenderingState<'s>,
+    pub(super) render_state: RenderingState<'state>,
 }
 
 impl<S: State> Deref for RenderCtx<'_, '_, S> {
@@ -76,7 +76,7 @@ impl<S: State> Deref for RenderCtx<'_, '_, S> {
 }
 
 /// Context for event handlers, providing mutable access to state.
-pub struct EventCtx<'c, S: State>(pub(crate) &'c mut InnerCtx<S>);
+pub struct EventCtx<'context, S: State>(pub(crate) &'context mut InnerCtx<S>);
 
 impl<S: State> Deref for EventCtx<'_, S> {
     type Target = S;

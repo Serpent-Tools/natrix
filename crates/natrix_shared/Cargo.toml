@@ -4,6 +4,10 @@ version = "0.3.0"
 edition = "2024"
 license = "MIT"
 description = "Shared code for Natrix framework."
+repository = "https://github.com/Serpent-Tools/natrix"
+keywords = ["frontend", "framework", "web", "wasm"]
+categories = ["gui", "wasm", "web-programming"]
+readme = "../../README.md"
 
 [lints]
 workspace = true

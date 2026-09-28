@@ -137,7 +137,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_drop_guard_basic_functionality() {
+    fn drop_guard_basic_functionality() {
         let called = Cell::new(false);
 
         {
@@ -149,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn test_drop_guard_cancel() {
+    fn drop_guard_cancel() {
         let called = Cell::new(false);
 
         {
@@ -161,7 +161,7 @@ mod tests {
     }
 
     #[test]
-    fn test_multiple_drop_guards() {
+    fn multiple_drop_guards() {
         let counter = Cell::new(0);
 
         {
@@ -178,14 +178,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "Callback panic")]
     #[expect(clippy::panic, reason = "Its a test")]
-    fn test_drop_guard_panicking_callback() {
+    fn drop_guard_panicking_callback() {
         {
             let _guard = DropGuard::new(|| panic!("Callback panic"));
         } // guard drops here and should panic
     }
 
     #[test]
-    fn test_drop_guard_with_captured_values() {
+    fn drop_guard_with_captured_values() {
         let mut value = String::from("initial");
 
         {
@@ -198,7 +198,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nested_drop_guards() {
+    fn nested_drop_guards() {
         let counter = Cell::new(0);
 
         {

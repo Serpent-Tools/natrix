@@ -132,15 +132,15 @@ where
     /// This does *not* mark the `ProjectableSignal` as dirty.
     #[inline]
     #[must_use]
-    pub fn as_mut<'s>(&'s mut self) -> <T::Projected<'s> as Downgrade<'s>>::MutOutput
+    pub fn as_mut<'this>(&'this mut self) -> <T::Projected<'this> as Downgrade<'this>>::MutOutput
     where
-        T::Projected<'s>: Downgrade<'s>,
+        T::Projected<'this>: Downgrade<'this>,
     {
         (Ref::project).call_mut(&mut self.data)
     }
 }
 
-impl<'s, T> Ref<'s, ProjectableSignal<T>>
+impl<'reference, T> Ref<'reference, ProjectableSignal<T>>
 where
     T: ProjectIntoState,
 {
@@ -148,7 +148,7 @@ where
     /// (Or similarly for any other projectable value)
     /// In the mut path this does *not* mark the `ProjectableSignal` as dirty.
     #[must_use]
-    pub fn project_signal(self) -> T::Projected<'s> {
+    pub fn project_signal(self) -> T::Projected<'reference> {
         if let Ref::Read(this) = &self
             && let Some(hook) = core::statics::current_hook()
         {

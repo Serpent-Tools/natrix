@@ -17,6 +17,7 @@
 #[cfg(debug_assertions)]
 use std::collections::HashSet;
 use std::marker::PhantomData;
+use std::rc::Weak;
 
 use smallvec::SmallVec;
 use wasm_bindgen::prelude::Closure;
@@ -55,9 +56,9 @@ impl CanHaveChild for () {}
 #[non_exhaustive]
 pub struct HtmlElement<C: State, T = ()> {
     /// Dom element
-    pub element: web_sys::Element,
+    element: web_sys::Element,
     /// The deferred actions
-    pub(crate) deferred: SmallVec<[DeferredFunc<C>; 2]>,
+    deferred: SmallVec<[DeferredFunc<C>; 2]>,
     /// Phantom data
     _phantom: PhantomData<T>,
     /// List of attributes that are already set.
@@ -89,6 +90,21 @@ impl<C: State, T> HtmlElement<C, T> {
             #[cfg(debug_assertions)]
             reactive_attributes: HashSet::new(),
         }
+    }
+
+    /// Returns the raw html element behind this `HtmlElement`
+    /// This is intended for performing modifications natrix does not natively expose.
+    ///
+    /// WARN: reactive callbacks (`|ctx| ...`) have not been called at this point as such the
+    /// attributes and child lists of the given element might not match its final state.
+    #[must_use]
+    pub fn get_element(&self) -> &web_sys::Element {
+        &self.element
+    }
+
+    /// Drain and return the deferred functions for this html element
+    pub(crate) fn drain_deferred(&mut self) -> impl Iterator<Item = DeferredFunc<C>> {
+        self.deferred.drain(..)
     }
 
     /// Replace the tag type marker with `()` to allow returning different types of elements.
@@ -130,9 +146,9 @@ impl<C: State, T> HtmlElement<C, T> {
         let element = element.clone();
 
         self.deferred.push(Box::new(move |ctx, rendering_state| {
-            let ctx_weak = ctx.this.clone();
+            let ctx_weak = Weak::clone(&ctx.this);
 
-            let callback: Box<dyn Fn(web_sys::Event) + 'static> = Box::new(move |event| {
+            let function: Box<dyn Fn(web_sys::Event) + 'static> = Box::new(move |event| {
                 crate::panics::return_if_panic!();
 
                 let Ok(event) = event.dyn_into() else {
@@ -140,24 +156,24 @@ impl<C: State, T> HtmlElement<C, T> {
                     return;
                 };
 
-                let Some(ctx) = ctx_weak.upgrade() else {
+                let Some(event_ctx) = ctx_weak.upgrade() else {
                     log_or_panic!("State dropped without event handlers being cleaned up");
                     return;
                 };
-                let Ok(mut ctx) = ctx.try_borrow_mut() else {
+                let Ok(mut event_ctx) = event_ctx.try_borrow_mut() else {
                     log_or_panic!("State already mutably borrowed in event handler");
                     return;
                 };
 
-                ctx.track_changes(|ctx| {
-                    function(EventCtx(ctx), event);
+                event_ctx.track_changes(|event_ctx| {
+                    function(EventCtx(event_ctx), event);
                 });
             });
-            let closure = Closure::wrap(callback);
-            let function = closure.as_ref().unchecked_ref();
+            let closure = Closure::wrap(function);
+            let js_function = closure.as_ref().unchecked_ref();
 
             log_or_panic_result!(
-                element.add_event_listener_with_callback(intern(E::EVENT_NAME), function),
+                element.add_event_listener_with_callback(intern(E::EVENT_NAME), js_function),
                 "Failed to attach event handler"
             );
 
@@ -340,6 +356,8 @@ macro_rules! elements {
 
                 #[doc = "<https://developer.mozilla.org/docs/Web/HTML/Reference/Elements/" $name ">"]
                 #[inline]
+                #[expect(clippy::allow_attributes, reason = "not all macro calls trigger it")]
+                #[allow(clippy::min_ident_chars, reason = "html tags")]
                 pub fn $name<C: State>() -> HtmlElement<C, [< Tag $name:camel >]> {
                     HtmlElement::new(stringify!($name))
                 }

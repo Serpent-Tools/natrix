@@ -10,7 +10,7 @@ use crate::css::values::{CssPropertyValue, IntoCss};
 #[must_use]
 pub struct RuleCollection {
     /// Raw sections of css
-    pub(crate) sections: Vec<String>,
+    sections: Vec<String>,
 }
 
 impl Default for RuleCollection {
@@ -202,6 +202,7 @@ macro_rules! test_property {
         #[cfg(all(test, not(target_arch = "wasm32")))]
         pastey::paste! {
             proptest::proptest! {
+                #[cfg(test)]
                 #[test]
                 fn [< test_ $prop:snake _ $name >](value: $value) {
                     let result = RuleCollection::new()

@@ -7,9 +7,9 @@ use std::path::{Path, PathBuf};
 use crate::prelude::*;
 use crate::{options, utils};
 
-pub(crate) mod assets;
+pub mod assets;
 mod css;
-pub(crate) mod sourcemap;
+mod sourcemap;
 mod wasm_js;
 mod wasm_parser;
 
@@ -21,7 +21,7 @@ const BINDGEN_OUTPUT_NAME: &str = "code";
 const CSS_OUTPUT_NAME: &str = "styles.css";
 
 /// Build a project
-pub(crate) fn build(config: &options::BuildConfig) -> Result<assets::AssetManifest> {
+pub fn build(config: &options::BuildConfig) -> Result<assets::AssetManifest> {
     if !utils::is_natrix_version_matching()? {
         uwuln!("Cli version does not match natrix version.", red.bold);
     }
@@ -91,7 +91,7 @@ pub(crate) fn build(config: &options::BuildConfig) -> Result<assets::AssetManife
 }
 
 /// Generate the html file to be used
-pub(crate) fn generate_html(
+fn generate_html(
     config: &options::BuildConfig,
     wasm_file: &Path,
     js_file: &Path,
@@ -155,10 +155,7 @@ pub(crate) fn generate_html(
 
 /// Moves the given file to a new location in accordane with cache busting options
 /// Returns the new file location
-pub(crate) fn cache_bust_file(
-    config: &options::BuildConfig,
-    original_file: PathBuf,
-) -> Result<PathBuf> {
+fn cache_bust_file(config: &options::BuildConfig, original_file: PathBuf) -> Result<PathBuf> {
     let Some(original_filename) = original_file.file_name() else {
         return Ok(original_file);
     };

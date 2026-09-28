@@ -86,7 +86,7 @@ pub fn mount_at<C: State>(
 /// # Errors
 /// If target mount point is not found.
 pub fn render_state<C: State>(
-    state: C,
+    initial_state: C,
     tree: impl Element<C>,
     target_id: &str,
 ) -> Result<RenderResult<C>, &'static str> {
@@ -94,20 +94,20 @@ pub fn render_state<C: State>(
         "Mounting root state {} at #{target_id}",
         std::any::type_name::<C>()
     );
-    let data = InnerCtx::new(state);
+    let data = InnerCtx::new(initial_state);
 
     let mut borrow_data = data.borrow_mut();
 
     let mut keep_alive = Vec::new();
     let mut hooks = Vec::new();
 
-    let mut state = RenderingState {
+    let mut render_state = RenderingState {
         keep_alive: &mut keep_alive,
         hooks: &mut hooks,
     };
     let node = tree
         .render()
-        .render(&mut borrow_data, &mut state)
+        .render_static(&mut borrow_data, &mut render_state)
         .into_node();
 
     let document = get_document();

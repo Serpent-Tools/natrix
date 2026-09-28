@@ -13,13 +13,13 @@ use crate::utils;
 #[derive(Deserialize)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct NatrixConfig {
+pub struct NatrixConfig {
     /// The cache busting strategy
-    pub(crate) cache_bust: CacheBustOption,
+    pub cache_bust: CacheBustOption,
     /// The base url to use
-    pub(crate) base_path: Box<str>,
+    pub base_path: Box<str>,
     /// Whether ssg should be done
-    pub(crate) ssg: bool,
+    pub ssg: bool,
 }
 
 impl Default for NatrixConfig {
@@ -42,25 +42,25 @@ struct PackageMetadata {
 impl NatrixConfig {
     /// Read the natrix config from cargo.toml metadata
     pub(crate) fn read_config() -> Result<Self> {
-        let metadata = cargo_metadata::MetadataCommand::default()
+        let cargo_metadata = cargo_metadata::MetadataCommand::default()
             .no_deps()
             .exec()?;
-        let packages = metadata.workspace_default_packages();
+        let packages = cargo_metadata.workspace_default_packages();
         let package = packages.first().ok_or(anyhow!("No package found"))?;
 
         if package.metadata.is_null() {
             return Ok(Self::default());
         }
-        let metadata: PackageMetadata = serde_json::from_value(package.metadata.clone())?;
+        let package_metadata: PackageMetadata = serde_json::from_value(package.metadata.clone())?;
 
-        Ok(metadata.natrix.unwrap_or_default())
+        Ok(package_metadata.natrix.unwrap_or_default())
     }
 }
 
 /// Natrix CLI
 #[derive(Parser)]
 #[clap(version, about, author)]
-pub(crate) enum Cli {
+pub enum Cli {
     /// Create a new project
     New {
         /// The name of the project
@@ -77,67 +77,67 @@ pub(crate) enum Cli {
 
 /// Arguments for the dev subcommand
 #[derive(Parser)]
-pub(crate) struct DevArguments {
+pub struct DevArguments {
     /// Port to use for dev server
     #[arg(short, long)]
-    pub(crate) port: Option<u16>,
+    pub port: Option<u16>,
     /// Bind to 0.0.0.0 instead of 127.0.0.1
     #[arg(long)]
-    pub(crate) allow_external: bool,
+    pub allow_external: bool,
     /// Disable live-reloading
     #[arg(long)]
-    pub(crate) no_reload: bool,
+    pub no_reload: bool,
     /// The shared arguments
     #[command(flatten)]
-    pub(crate) shared: SharedArguments,
+    pub shared: SharedArguments,
 }
 
 /// Arguments for the build subcommand
 #[derive(Parser)]
-pub(crate) struct BuildArguments {
+pub struct BuildArguments {
     /// The target dist folder
     #[arg(short, long)]
-    pub(crate) dist: Option<PathBuf>,
+    pub dist: Option<PathBuf>,
     /// The shared arguments
     #[command(flatten)]
-    pub(crate) shared: SharedArguments,
+    pub shared: SharedArguments,
 }
 
 /// Settings for building the server
 #[derive(Parser)]
-pub(crate) struct SharedArguments {
+pub struct SharedArguments {
     /// Build profile to use
     #[arg(long, value_enum)]
-    pub(crate) profile: Option<BuildProfile>,
+    pub profile: Option<BuildProfile>,
     /// Invalidate the asset caches
     #[arg(long)]
-    pub(crate) invalidate_cache: bool,
+    pub invalidate_cache: bool,
 }
 
 /// Settings for building the server
-pub(crate) struct BuildConfig {
+pub struct BuildConfig {
     /// Build profile to use
-    pub(crate) profile: BuildProfile,
+    pub profile: BuildProfile,
     /// Location to output build files
-    pub(crate) dist: PathBuf,
+    pub dist: PathBuf,
     /// Location for the temp dir
-    pub(crate) temp_dir: PathBuf,
+    pub temp_dir: PathBuf,
     /// Do live reload
     /// The Some value is the port to use
-    pub(crate) live_reload: Option<u16>,
+    pub live_reload: Option<u16>,
     /// Cache bust option
-    pub(crate) cache_bust: CacheBustOption,
+    pub cache_bust: CacheBustOption,
     /// The base url to use
-    pub(crate) base_path: Box<str>,
+    pub base_path: Box<str>,
     /// Invalidate the asset caches
-    pub(crate) invalidate_cache: bool,
+    pub invalidate_cache: bool,
     /// Whether to do ssg
-    pub(crate) ssg: bool,
+    pub ssg: bool,
 }
 
 impl DevArguments {
     /// Create a `BuildConfig` from `DevArguments` with appropriate defaults
-    pub(crate) fn get_build_config(&self) -> Result<BuildConfig> {
+    pub fn get_build_config(&self) -> Result<BuildConfig> {
         let profile = self.shared.profile.unwrap_or(BuildProfile::Dev);
         let target = utils::find_target_natrix(profile)?;
 
@@ -187,14 +187,14 @@ impl BuildArguments {
 
 impl BuildConfig {
     /// Should dev sever do direct serving
-    pub(crate) fn should_direct_serve_files(&self) -> bool {
+    pub fn should_direct_serve_files(&self) -> bool {
         self.profile == BuildProfile::Dev && self.live_reload.is_some()
     }
 }
 
 /// Build profile
 #[derive(Clone, Copy, ValueEnum, PartialEq, Eq)]
-pub(crate) enum BuildProfile {
+pub enum BuildProfile {
     /// Runs with optimizations
     Release,
     /// Does not do any optimization
@@ -203,7 +203,7 @@ pub(crate) enum BuildProfile {
 
 impl BuildProfile {
     /// Return a more readable version of this profile name
-    pub(crate) fn readable(self) -> &'static str {
+    pub fn readable(self) -> &'static str {
         match self {
             Self::Release => "release",
             Self::Dev => "dev",
@@ -211,7 +211,7 @@ impl BuildProfile {
     }
 
     /// Return the cargo profile name
-    pub(crate) fn cargo(self) -> &'static str {
+    pub fn cargo(self) -> &'static str {
         match self {
             Self::Release => "release",
             Self::Dev => "dev",
@@ -219,7 +219,7 @@ impl BuildProfile {
     }
 
     /// Return the target output folder
-    pub(crate) fn target(self) -> &'static str {
+    pub fn target(self) -> &'static str {
         match self {
             Self::Release => "release",
             Self::Dev => "debug",
@@ -230,7 +230,7 @@ impl BuildProfile {
 /// Cache busting options
 #[derive(Clone, Copy, ValueEnum, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum CacheBustOption {
+pub enum CacheBustOption {
     /// No cache busting
     None,
     /// Crate a hash based on the content

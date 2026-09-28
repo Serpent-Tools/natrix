@@ -12,7 +12,7 @@ pub const FEATURE_BUNDLE: &str = "__natrix_internal_bundle";
 pub const FEATURE_NO_SGG: &str = "__natrix_internal_no_ssg";
 
 /// Generate a new project
-pub(crate) fn generate_project(name: &str, stable: bool) -> Result<()> {
+pub fn generate_project(name: &str, stable: bool) -> Result<()> {
     let root = PathBuf::from(name);
     fs::create_dir_all(&root)?;
 
@@ -64,7 +64,7 @@ fn generate_cargo_toml(name: &str, root: &Path) -> Result<(), anyhow::Error> {
         .map(|feat| format!(r#""{feat}""#))
         .collect::<Vec<_>>()
         .join(",");
-    natrix_table = format!(r"{natrix_table}, features = [{features}]");
+    natrix_table = format!("{natrix_table}, features = [{features}]");
     let natrix_decl = format!("natrix = {{ {natrix_table} }}");
     let natrix_decl = natrix_decl.trim();
     let cargo_toml = format!(
