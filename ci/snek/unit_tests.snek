@@ -1,0 +1,17 @@
+import "./core.snek" as core;
+import "@/rust.snek" as rust;
+
+native_test_base = rust::stable 
+    > rust::Chef(core::source_code, "cargo test --all-features && cargo test --all-features --package natrix");
+
+export native_tests =  native_test_base
+    > rust::WithBinstall("cargo-nextest")
+    > Exec("cargo nextest run --package natrix --all-features --no-fail-fast --offline");
+
+export doc_tests = native_test_base
+    > Exec("cargo test --doc --all-features --offline");
+
+export wasm_tests = core::wasm
+    > rust::WithChef(core::source_code, "cargo test --tests --target wasm32-unknown-unknown --package natrix --all-features");
+
+export all_unit = All(native_tests, doc_tests, wasm_tests);

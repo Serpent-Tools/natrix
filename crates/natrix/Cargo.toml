@@ -78,11 +78,6 @@ insta = "1.43.2"
 [package.metadata.cargo-udeps.ignore]
 development = ["wasm-bindgen-test"]
 
-[build-dependencies]
-# Build Tools
-rustversion = "1.0.22"
-natrix_shared = { path = "../natrix_shared", version = "0.3.0" }
-
 [dependencies.web-sys]
 version = "0.3.78"
 features = [

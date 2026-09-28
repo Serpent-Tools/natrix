@@ -8,7 +8,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     serpentine = {
-      url = "github:Serpent-Tools/serpentine/v1.0.1";
+      url = "github:Serpent-Tools/serpentine/v1.0.2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -43,26 +43,46 @@
         );
     in
     {
-      devShells = forAllSystems (pkgs: {
-        default = pkgs.mkShell {
-          packages = [
-            (pkgs.fenix.latest.withComponents [
-              "cargo"
-              "clippy"
-              "rustc"
+      devShells = forAllSystems (
+        pkgs:
+        let
+          wasm-bindgen-cli = pkgs.buildWasmBindgenCli rec {
+            src = pkgs.fetchCrate {
+              pname = "wasm-bindgen-cli";
+              version = "0.2.129";
+              hash = "sha256-pcecKQd7E8Opw6bkFoE569epUi7gh5qpQF1e5PJY6V8=";
+            };
+            cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+              inherit src;
+              inherit (src) pname version;
+              hash = "sha256-vmUrWVU7kPJJxO5qIVeAkwQyWDELO1Z4Z5gitz2kco8=";
+            };
+          };
+        in
+        {
+          default = pkgs.mkShell {
+            packages = [
+              (pkgs.fenix.combine [
+                (pkgs.fenix.latest.withComponents [
+                  "cargo"
+                  "clippy"
+                  "rustc"
 
-              "rust-analyzer"
-              "rustfmt"
+                  "rust-analyzer"
+                  "rustfmt"
 
-              "rust-src"
-            ])
-            pkgs.serpentine
-            pkgs.just
+                  "rust-src"
+                ])
+                pkgs.fenix.targets.wasm32-unknown-unknown.latest.rust-std
+              ])
+              pkgs.serpentine
+              pkgs.just
 
-            pkgs.wasm-bindgen-cli_0_2_100
-            pkgs.binaryen
-          ];
-        };
-      });
+              wasm-bindgen-cli
+              pkgs.binaryen
+            ];
+          };
+        }
+      );
     };
 }

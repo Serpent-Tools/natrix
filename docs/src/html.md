@@ -3,9 +3,9 @@
 Html elements are the building blocks of web pages. While other rust frameworks aim for a JSX-like syntax, this library uses a more traditional approach.
 The goal is to provide a simple and efficient way to create HTML elements without the need for complex syntax, we use the idomatic rust builder pattern.
 
-Natrix uses a single [`HtmlElement`](dom::html_elements::HtmlElement) struct to represent all HTML elements. But exposes helper functions for each tag.
-These are found along side the `HtmlElement` struct in the [`html_elements`](dom::html_elements) module.
-Which will most commonly be used via the `e` alias in the [`prelude`](prelude) module.
+Natrix uses a single [`HtmlElement`](natrix::dom::html_elements::HtmlElement) struct to represent all HTML elements. But exposes helper functions for each tag.
+These are found along side the `HtmlElement` struct in the [`html_elements`](natrix::dom::html_elements) module.
+Which will most commonly be used via the `e` alias in the [`prelude`](natrix::prelude) module.
 
 ```rust,no_run
 # extern crate natrix;
@@ -15,7 +15,7 @@ e::div()
 # ;
 ```
 
-If you need to construct a element with a tag not found in the library you can use [`HtmlElement::new`](dom::html_elements::HtmlElement::new).
+If you need to construct a element with a tag not found in the library you can use [`HtmlElement::new`](natrix::dom::html_elements::HtmlElement::new).
 
 ```rust,no_run
 # extern crate natrix;
@@ -27,7 +27,7 @@ e::HtmlElement::new("custom_tag")
 
 ## Children
 
-Children are added using the [`.child`](dom::html_elements::HtmlElement::child) method. This method takes a single child element and adds it to the parent element.
+Children are added using the [`.child`](natrix::dom::html_elements::HtmlElement::child) method. This method takes a single child element and adds it to the parent element.
 
 ```rust,no_run
 # extern crate natrix;
@@ -40,11 +40,11 @@ e::div()
 ```
 
 > [!TIP]
-> the [`.text`](dom::html_elements::HtmlElement::text) method is a alias for [`.child`](dom::html_elements::HtmlElement::child)
+> the [`.text`](natrix::dom::html_elements::HtmlElement::text) method is a alias for [`.child`](natrix::dom::html_elements::HtmlElement::child)
 
-Child elements can be any type that implements the [`Element`](dom::element::Element) trait, including other [`HtmlElement`](dom::html_elements::HtmlElement) instances, and stdlib types like [`String`](std::string::String), [`&str`](std::primitive::str), [`i32`](std::primitive::i32), as well as containers such as [`Option`](std::option::Option) and [`Result`](std::result::Result).
+Child elements can be any type that implements the [`Element`](natrix::dom::element::Element) trait, including other [`HtmlElement`](natrix::dom::html_elements::HtmlElement) instances, and stdlib types like [`String`], [`&str`](std::primitive::str), [`i32`], as well as containers such as [`Option`] and [`Result`].
 
-Child elements can also be reactive as closures implement the [`Element`](dom::element::Element) trait.
+Child elements can also be reactive as closures implement the [`Element`](natrix::dom::element::Element) trait.
 
 ```rust
 # extern crate natrix;
@@ -74,7 +74,7 @@ e::div()
 ```
 
 ## `format_elements`
-You can use the [`format_elements`](format_elements) macro to get `format!` like ergonomics for elements.
+You can use the [`format_elements`](natrix::format_elements) macro to get `format!` like ergonomics for elements.
 ```rust
 # extern crate natrix;
 # use natrix::prelude::*;
@@ -138,7 +138,7 @@ e::h1().children(natrix::format_elements!(
 
 ## Attributes
 
-Attributes are set using the [`.attr`](dom::html_elements::HtmlElement::attr) method. This method takes a key and a value, and sets the attribute on the element.
+Attributes are set using the [`.attr`](natrix::dom::html_elements::HtmlElement::attr) method. This method takes a key and a value, and sets the attribute on the element.
 
 ```rust,no_run
 # extern crate natrix;
@@ -177,8 +177,8 @@ e::div()
 # ;
 ```
 
-Attributes can be set by anything that implements the [`ToAttribute`](dom::ToAttribute) trait, this includes numerics, [`Option`](std::option::Option), and [`bool`](std::primitive::bool), and others.
-Attributes can also be reactive as closures implement the [`ToAttribute`](dom::ToAttribute) trait.
+Attributes can be set by anything that implements the [`ToAttribute`](natrix::dom::ToAttribute) trait, this includes numerics, [`Option`], and [`bool`], and others.
+Attributes can also be reactive as closures implement the [`ToAttribute`](natrix::dom::ToAttribute) trait.
 
 ```rust,no_run
 # extern crate natrix;
@@ -199,7 +199,7 @@ e::button()
 # }
 ```
 
-Importantly for the attribute helpers [`AttributeKind`](dom::attributes::ToAttribute::AttributeKind) determines what kind of values are allowed for that helper. Important a attribute kind of for example `bool` also supports `Option<bool>`, a closure returning `bool`, etc. For example this wont compile:
+Importantly for the attribute helpers [`AttributeKind`](natrix::dom::attributes::ToAttribute::AttributeKind) determines what kind of values are allowed for that helper. Important a attribute kind of for example `bool` also supports `Option<bool>`, a closure returning `bool`, etc. For example this wont compile:
 ```rust,compile_fail
 # extern crate natrix;
 # use natrix::prelude::*;
@@ -211,7 +211,7 @@ e::a()
 
 ## Classes
 
-The [`.class`](dom::html_elements::HtmlElement::class) method is _not_ a alias for [`.attr`](dom::html_elements::HtmlElement::attr), it will add the class to the element, and not replace it. This is because the `class` attribute is a special case in HTML, and is used to apply CSS styles to elements. The [`.class`](dom::html_elements::HtmlElement::class) method will add the class to the element, and not replace any existing ones.
+The [`.class`](natrix::dom::html_elements::HtmlElement::class) method is _not_ a alias for [`.attr`](natrix::dom::html_elements::HtmlElement::attr), it will add the class to the element, and not replace it. This is because the `class` attribute is a special case in HTML, and is used to apply CSS styles to elements. The [`.class`](natrix::dom::html_elements::HtmlElement::class) method will add the class to the element, and not replace any existing ones.
 
 ```rust,no_run
 # extern crate natrix;
@@ -227,7 +227,7 @@ e::div()
 # ;
 ```
 
-Classes can also be reactive as closures implement the [`ToClass`](dom::ToClass) trait.
+Classes can also be reactive as closures implement the [`ToClass`](natrix::dom::ToClass) trait.
 
 ```rust
 # extern crate natrix;

@@ -86,7 +86,7 @@ This configures all asset URLs to be prefixed with the specified path.
 > Always include a leading slash in your `base_path` value.
 
 ### SSG 
-By default natrix extracts metadata from your application, importantly for this to work your application must call [`mount`](reactivity::mount::mount), and should not access any browser apis before or after it. 
+By default natrix extracts metadata from your application, importantly for this to work your application must call [`mount`](natrix::reactivity::mount::mount), and should not access any browser apis before or after it. 
 If your application does not use `mount` you should set this option to `false`.
 
 This will force css to be injected at runtime instead, and more importantly will not attempt to build and call your binary during bundling.

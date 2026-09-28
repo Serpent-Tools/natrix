@@ -65,7 +65,9 @@ macro_rules! log_or_panic {
     };
 }
 
-pub(crate) use {log_or_panic, log_or_panic_assert, log_or_panic_result};
+pub(crate) use log_or_panic;
+pub(crate) use log_or_panic_assert;
+pub(crate) use log_or_panic_result;
 
 #[cfg(test)]
 mod tests {

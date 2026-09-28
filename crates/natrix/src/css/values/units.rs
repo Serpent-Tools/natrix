@@ -79,7 +79,7 @@ macro_rules! define_length_enum {
         //   - one usize in 0..VARIANT_COUNT
         // and map to the corresponding variant.
         #[cfg(all(test, not(target_arch = "wasm32")))]
-        #[expect(clippy::arithmetic_side_effects, unused_assignments, reason="Tests")]
+        #[expect(clippy::arithmetic_side_effects, reason="Tests")]
         impl proptest::arbitrary::Arbitrary for Length {
             type Parameters = ();
             type Strategy = proptest::strategy::BoxedStrategy<Length>;

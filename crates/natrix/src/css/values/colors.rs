@@ -193,7 +193,7 @@ impl IntoCss for Color {
                 blue,
                 alpha,
             } => {
-                format!("rgb({red} {green} {blue}/{alpha})",)
+                format!("rgb({red} {green} {blue}/{alpha})")
             }
             Self::Hsl {
                 hue,

@@ -19,7 +19,7 @@ The framework makes liberal use of debug only panics, but is very careful about 
 
 ### Very unlikely
 - **Window or Document Not Found** - If the window or document is not found, natrix will panic.
-- **Mount Not Found** - if [`mount`](reactivity::mount::mount) fails to find the standard natrix mount point it will error.
+- **Mount Not Found** - if [`mount`](natrix::reactivity::mount::mount) fails to find the standard natrix mount point it will error.
 
 ### User Errors
 - **User Panics** - This one should be obvious.

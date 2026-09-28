@@ -16,7 +16,7 @@ Lets go into some more detail about what this does. Both `RenderCtx` and `EventC
 > type R<'s, 'r> = RenderCtx<'s, 'r, App>;
 > ```
 
-The callbacks return a value that implements [`Element`](dom::element::Element), internally the framework will register which fields you accessed.
+The callbacks return a value that implements [`Element`](natrix::dom::element::Element), internally the framework will register which fields you accessed.
 And when those fields change, the framework will recall the callback and update the element with the result.
 
 Natrix does **_not_** use a virtual dom, meaning when a callback is re-called the framework will swap out the entire associated element.
@@ -35,7 +35,7 @@ Natrix _only_ makes the following guarantees about when a callback will be calle
 Thats it, natrix does not make any guarantees about the order of sibling callbacks.
 
 ## Returning different kinds of elements.
-Sometimes two branches returns different kinds of elements, this can be solved using `Result`, or by pre-rendering them using [`.render`](dom::element::Element::render). Which produces the internal result of a element render (which itself implements `Element` for this exact purpose)
+Sometimes two branches returns different kinds of elements, this can be solved using `Result`, or by pre-rendering them using [`.render`](natrix::dom::element::Element::render). Which produces the internal result of a element render (which itself implements `Element` for this exact purpose)
 
 ```rust
 # extern crate natrix;
@@ -58,7 +58,7 @@ e::div()
 ```
 
 > [!TIP]
-> For handling multiple types of html elements, theres [`.generic()`](dom::html_elements::HtmlElement::generic), which returns `HtmlElement<C, ()>`, i.e erases the dom tag, allowing you to for example construct different tags in a `if`, and then later call methods on it. Ofc doing this means only global attribute helpers can be used, but you can always use `.attr` directly.
+> For handling multiple types of html elements, theres [`.generic()`](natrix::dom::html_elements::HtmlElement::generic), which returns `HtmlElement<C, ()>`, i.e erases the dom tag, allowing you to for example construct different tags in a `if`, and then later call methods on it. Ofc doing this means only global attribute helpers can be used, but you can always use `.attr` directly.
 
 ## Signal-based Reactivity
 
@@ -86,7 +86,7 @@ The reactivity system automatically tracks when `ctx.value` is accessed and will
 
 ## Computed values
 What if you have something that depends on a computed value? if you did `if *ctx.value > 2` then that reactive closure would re-run whenever `.value` changes.
-This is where [`ctx.watch`](prelude::RenderCtx::watch) comes in, this caches the result of the computation and only re-runs the parent closure if the calculated value changes.
+This is where [`ctx.watch`](natrix::prelude::RenderCtx::watch) comes in, this caches the result of the computation and only re-runs the parent closure if the calculated value changes.
 
 ```rust
 # extern crate natrix;
@@ -186,7 +186,7 @@ Specifically `ctx.guard(...)` on a lens for `Option<T>` will return a `Option<im
 
 ### How Guards Work
 
-Guards use [`ctx.watch`](prelude::RenderCtx::watch) internally to track when the condition changes (like `.is_some()`), but they provide a safe way to access the inner value without `.unwrap()`.
+Guards use [`ctx.watch`](natrix::prelude::RenderCtx::watch) internally to track when the condition changes (like `.is_some()`), but they provide a safe way to access the inner value without `.unwrap()`.
 
 When you use `ctx.get(value_guard)`, you get the inner value safely because the guard guarantees it exists.
 

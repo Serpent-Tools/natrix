@@ -1,6 +1,6 @@
 # State
 
-State in natrix usually refers to stuff implementing the [`State`](reactivity::State) trait.
+State in natrix usually refers to stuff implementing the [`State`](natrix::reactivity::State) trait.
 This trait is a **marker** trait, and is intended to be implemented by the `State` derive macro, which will insert bounds to assert that all your fields are also `State`.
 
 ```rust
@@ -46,7 +46,7 @@ Now you get fine-grained reactivity on the `book` fields.
 
 > [!IMPORTANT]
 > Never directly overwrite a `State`. Doing this will not trigger reactive updates. and will break your app.
-> Use [`.set`](prelude::State::set) instead.
+> Use [`.set`](natrix::prelude::State::set) instead.
 > ```rust
 > # extern crate natrix;
 > # use natrix::prelude::*;
@@ -65,7 +65,7 @@ Now you get fine-grained reactivity on the `book` fields.
 > This also includes overwriting any `State` struct directly, like `ctx.book = Book::...`
 
 ## `Signal`
-the [`Signal`](prelude::Signal) is the core reactive primitive in natrix, and implements read and write tracking on derefrencing.
+the [`Signal`](natrix::prelude::Signal) is the core reactive primitive in natrix, and implements read and write tracking on derefrencing.
 
 ```rust
 # extern crate natrix;
@@ -87,7 +87,7 @@ fn render() -> impl Element<App> {
 ```
 
 ## `ProjectableSignal`
-The [`ProjectableSignal`](reactivity::signal::ProjectableSignal) allows you to use fine-grained reactivity over certain wrapper types that dont implement the required tracking internally, such as most enums. When you have a `Ref` to the value you can use [`.project_signal`](access::Ref::project_signal) to get a projected `Ref` to the inner value.
+The [`ProjectableSignal`](natrix::reactivity::signal::ProjectableSignal) allows you to use fine-grained reactivity over certain wrapper types that dont implement the required tracking internally, such as most enums. When you have a `Ref` to the value you can use [`.project_signal`](natrix::access::Ref::project_signal) to get a projected `Ref` to the inner value.
 
 ```rust
 # extern crate natrix;

@@ -1,9 +1,9 @@
 # Testing
 
 Testing is a important part of any project. Natrix doesnt have a dedicated testing framework, instead we recommend you use [wasm-pack](https://rustwasm.github.io/wasm-pack/) to run your tests.
-But natrix does provide the [`test_utils`](crate::test_utils) module to help with testing, which is enabled with the `test_utils` feature flag.
+But natrix does provide the [`test_utils`](natrix::test_utils) module to help with testing, which is enabled with the `test_utils` feature flag.
 
-The primary functions are [`mount_test`](crate::test_utils::mount_test) and [`get`](crate::test_utils::get).
+The primary functions are [`mount_test`](natrix::test_utils::mount_test) and [`get`](natrix::test_utils::get).
 
 ## Example
 

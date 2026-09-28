@@ -5,6 +5,8 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::{fs, process};
 
+use oxc::span::GetSpan;
+
 use super::{BINDGEN_OUTPUT_NAME, MACRO_OUTPUT_DIR};
 use crate::options::BuildProfile;
 use crate::prelude::*;
@@ -43,6 +45,24 @@ impl<'a> oxc::ast_visit::VisitMut<'a> for RenameVisitor<'a> {
             .identifier_name(current_span, new_name);
 
             it.property = new_identifier;
+        }
+    }
+
+    fn visit_property_key(&mut self, it: &mut oxc::ast::ast::PropertyKey<'a>) {
+        oxc::ast_visit::walk_mut::walk_property_key(self, it);
+
+        let Some(current_name) = it.static_name() else {
+            return;
+        };
+        if let Some(new_name) = self.mapping.0.get(&*current_name) {
+            let new_name = self.allocator.alloc_str(new_name);
+
+            let builder = oxc::ast::AstBuilder {
+                allocator: self.allocator,
+            };
+            let new_identifier = builder.identifier_name(it.span(), new_name);
+
+            *it = oxc::ast::ast::PropertyKey::StaticIdentifier(builder.alloc(new_identifier));
         }
     }
 }
@@ -282,9 +302,11 @@ pub(crate) fn optimize_wasm(wasm_file: &PathBuf) -> Result<RenameMap, anyhow::Er
     }
 
     // HACK: https://github.com/WebAssembly/binaryen/issues/7657
-    // wasm-opt does not report the renaming of the wbg module
-    // as of writing it is always renamed to "a" due to being the only module
+    // wasm-opt does not report the renaming of the glue module,
+    // as of writing it is always renamed to "a" due to being the only module.
+    // wasm-bindgen spells that module both as a bare name and as a path to the glue file.
     mapping.insert("wbg".into(), "a".into());
+    mapping.insert(format!("./{BINDGEN_OUTPUT_NAME}_bg.js").into(), "a".into());
 
     spinner.finish();
     if !result {
