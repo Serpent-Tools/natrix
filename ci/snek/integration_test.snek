@@ -53,7 +53,7 @@ def ChromeDriver(page) {
 def IntegrationTest(page, flags) {
     return rust::stable
         > rust::WithBinstall("cargo-nextest")
-        > rust::Chef(core::source_code, Join("cargo nextest run -p integration_tests", flags, " || true"))
+        > rust::Chef(core::source_code, Join("cargo nextest run -p integration_tests ", flags, " || true"))
         > WithService(ChromeDriver(page), "chrome.local")
         > Exec(Join("cargo nextest run -j 1 --fail-fast -p integration_tests ", flags));
 }

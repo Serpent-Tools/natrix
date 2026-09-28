@@ -175,7 +175,7 @@ pub(crate) fn spawn_server(
     uwu!(ip, bright_red);
     uwu!(":", bright_red);
     uwu!(&port.to_string(), bright_red);
-    
+
     let live_reload_text = if let Some(live_reload_url) = live_reload {
         format!(" (with live-reload via {live_reload_url})")
     } else {

@@ -5,7 +5,8 @@ use clap::Parser;
 /// Reusable imports
 mod prelude {
     pub use anyhow::{Context, Result, anyhow};
-    pub use owo_colors::{OwoColorize, Stream::Stdout};
+    pub use owo_colors::OwoColorize;
+    pub use owo_colors::Stream::Stdout;
 }
 
 /// Helper macro to chain multiple styles and colors from ``owo_colors`` (and println! it), checks if colors are supported.

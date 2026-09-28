@@ -180,9 +180,9 @@ pub(crate) fn build_wasm(config: &options::BuildConfig) -> Result<PathBuf> {
             rustc_flags.push_str("-Zfmt-debug=none -Zlocation-detail=none -Zshare-generics=y");
         } else {
             uwuln!(
-                    "⚠️ Using stable rust, nightly rust allows for better optimizations and smaller wasm files",
-                        yellow.bold
-                );
+                "⚠️ Using stable rust, nightly rust allows for better optimizations and smaller wasm files",
+                yellow.bold
+            );
         }
         command.env("RUSTFLAGS", rustc_flags);
     }

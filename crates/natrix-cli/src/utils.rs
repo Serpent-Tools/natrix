@@ -15,8 +15,11 @@ use crate::prelude::*;
 /// Create a spinner with the given msg
 pub(crate) fn create_spinner(msg: &str) -> Result<ProgressBar> {
     let spinner = ProgressBar::new_spinner().with_style(
-        ProgressStyle::with_template(&format!("{{spinner:.red}} {} {{msg}}", uwu_style!(msg, bright_blue)))?
-            .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏-"),
+        ProgressStyle::with_template(&format!(
+            "{{spinner:.red}} {} {{msg}}",
+            uwu_style!(msg, bright_blue)
+        ))?
+        .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏-"),
     );
     spinner.enable_steady_tick(Duration::from_millis(100));
     Ok(spinner)
