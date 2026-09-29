@@ -20,7 +20,7 @@ natrix_shared = { path = "../natrix_shared", version = "0.3.0", features = ["mac
 
 # CLI
 clap = { version = "4.5.47", features = ["derive"], default-features = true }
-indicatif = "0.18.0"
+indicatif = {version = "=0.18.4", features = ["improved_unicode"]}
 owo-colors = { version = "4.2.2", default-features = false, features=["supports-colors"] }
 anyhow = { version = "1.0.99", default-features = false }
 
