@@ -48,7 +48,7 @@ pub fn run_with_spinner(mut command: process::Command, spinner: ProgressBar) -> 
         full_output.push_str(&line);
         full_output.push('\n');
 
-        spinner.set_message(line);
+        spinner.set_message(line.trim().to_owned());
     }
 
     let status = child.wait()?;

@@ -104,14 +104,12 @@ pub fn do_dev(args: &options::DevArguments) -> Result<()> {
 #[expect(
     clippy::expect_used,
     clippy::needless_pass_by_value,
-    clippy::infinite_loop,
     reason = "This is running in a thread"
 )]
 fn spawn_websocket(port: u16, reload_signal: mpsc::Receiver<()>, ip: Ipv4Addr) {
     let server = TcpListener::bind((ip, port)).expect("Failed to bind websocket");
     let clients = Arc::new(Mutex::new(Vec::new()));
 
-    // TODO:
     let clients_clone = Arc::clone(&clients);
     thread::spawn(move || {
         for stream in server.incoming() {
@@ -126,13 +124,11 @@ fn spawn_websocket(port: u16, reload_signal: mpsc::Receiver<()>, ip: Ipv4Addr) {
         }
     });
 
-    loop {
-        if let Ok(()) = reload_signal.recv() {
-            let mut clients = clients.lock().expect("Mutex gone");
-            for mut client in clients.drain(..) {
-                let _ = client.write(tungstenite::Message::from("RELOAD NOW PLS"));
-                client.flush().expect("Failed to flush");
-            }
+    while let Ok(()) = reload_signal.recv() {
+        let mut clients = clients.lock().expect("Mutex gone");
+        for mut client in clients.drain(..) {
+            let _ = client.write(tungstenite::Message::from("RELOAD NOW PLS"));
+            let _ = client.flush();
         }
     }
 }
