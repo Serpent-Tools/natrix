@@ -177,8 +177,8 @@ e::div()
 # ;
 ```
 
-Attributes can be set by anything that implements the [`ToAttribute`](natrix::dom::ToAttribute) trait, this includes numerics, [`Option`], and [`bool`], and others.
-Attributes can also be reactive as closures implement the [`ToAttribute`](natrix::dom::ToAttribute) trait.
+Attributes can be set by anything that implements [`WebValue<Attribute<C>>`](natrix::dom::Attribute), this includes numerics, [`Option`], and [`bool`], and others.
+Attributes can also be reactive as closures implement [`WebValue<Attribute<C>>`](natrix::dom::Attribute).
 
 ```rust,no_run
 # extern crate natrix;
@@ -199,7 +199,7 @@ e::button()
 # }
 ```
 
-Importantly for the attribute helpers [`AttributeKind`](natrix::dom::attributes::ToAttribute::AttributeKind) determines what kind of values are allowed for that helper. Important a attribute kind of for example `bool` also supports `Option<bool>`, a closure returning `bool`, etc. For example this wont compile:
+Importantly for the attribute helpers [`WebValue::Kind`](natrix::web_value::WebValue::Kind) determines what kind of values are allowed for that helper. Important a attribute kind of for example `bool` also supports `Option<bool>`, a closure returning `bool`, etc (see the [`web_value`](natrix::web_value) module for more information). For example this wont compile:
 ```rust,compile_fail
 # extern crate natrix;
 # use natrix::prelude::*;
@@ -227,7 +227,7 @@ e::div()
 # ;
 ```
 
-Classes can also be reactive as closures implement the [`ToClass`](natrix::dom::ToClass) trait.
+Classes can also be reactive as closures implement [`WebValue<ClassName<C>>`](natrix::dom::ClassName).
 
 ```rust
 # extern crate natrix;

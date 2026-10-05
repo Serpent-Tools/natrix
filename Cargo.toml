@@ -29,9 +29,6 @@ unfulfilled_lint_expectations = "warn"
 unsafe_code = "deny"
 non_ascii_idents = "deny"
 
-# TODO: most of the modules affected by this are to be refactors (attributes/elements/classes/css) into one unified mechanic so lets ignore these lints for now. 
-private_interfaces = "allow"
-
 [workspace.lints.clippy]
 pedantic = {level = "warn", priority = 1}
 allow_attributes = "deny"
@@ -53,8 +50,6 @@ undocumented_unsafe_blocks = "deny"
 missing_docs_in_private_items = "warn"
 panic = { level = "deny", priority = 0 }
 
-# TODO: most of the modules affected by this are to be refactors (attributes/elements/classes/css) into one unified mechanic so lets ignore these lints for now. 
-field_scoped_visibility_modifiers = "allow"
 type_complexity = "allow" # TODO: didnt seem too complex
 
 # niche stuff

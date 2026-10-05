@@ -42,7 +42,8 @@ fn render_result_ok() {
 
 #[wasm_bindgen_test]
 fn render_result_err() {
-    crate::mount_test(Empty, e::div().id(HELLO_ID).child(Err::<&str, &str>("hey")));
+    // Different types on purpose to test that the type system allows that.
+    crate::mount_test(Empty, e::div().id(HELLO_ID).child(Err::<i32, &str>("hey")));
 
     let element = crate::get(HELLO_ID);
     assert_eq!(element.text_content(), Some("hey".to_owned()));

@@ -4,156 +4,73 @@ use std::borrow::Cow;
 
 use wasm_bindgen::intern;
 
-use super::html_elements::DeferredFunc;
+use super::html_elements::MaybeDeferred;
 use crate::error_handling::log_or_panic;
 use crate::macro_ref::State;
 use crate::prelude::Id;
 use crate::reactivity::context::RenderCtx;
 use crate::reactivity::dom_hooks::{ReactiveAttribute, SimpleReactive, SimpleReactiveResult};
-use crate::type_macros;
+use crate::web_value::{RawWebValue, SupportedBy, WebValue};
 
-/// The result of `calc_attribute`
-pub(crate) enum AttributeResult<C: State> {
-    /// The attribute should be set
-    SetIt(Option<Cow<'static, str>>),
-    /// The attribute requires state
-    IsDynamic(DeferredFunc<C>),
+/// The `WebValue` target for attribute values, see `HtmlElement::attr`.
+pub struct Attribute<C: State>(pub(crate) MaybeDeferred<C>);
+
+impl<C: State> RawWebValue for Attribute<C> {
+    type Arguments<'arg> = (&'static str, &'arg web_sys::Element);
 }
 
-/// A trait for using a arbitrary type as a attribute value.
-#[diagnostic::on_unimplemented(
-    message = "`{Self}` is not a valid attribute value.",
-    note = "Try converting the value to a string"
-)]
-pub trait ToAttribute<C: State>: 'static {
-    /// The kind of attribute output this is
-    type AttributeKind;
-
-    /// Return the attribute value, or a deferred function.
-    fn calc_attribute(self, name: &'static str, node: &web_sys::Element) -> AttributeResult<C>;
-}
-
-/// A attribute that is a integer
-pub struct Integer;
-
-/// A attribute that is a float
-pub struct Float;
-
-/// generate a `ToAttribute` implementation for a string type
-macro_rules! attribute_string {
-    ($t:ty, $cow:expr) => {
-        impl<C: State> ToAttribute<C> for $t {
-            type AttributeKind = String;
-
-            #[inline]
-            fn calc_attribute(
-                self,
-                _name: &'static str,
-                _node: &web_sys::Element,
-            ) -> AttributeResult<C> {
-                AttributeResult::SetIt(Some(($cow)(self)))
-            }
-        }
-    };
-}
-
-type_macros::strings!(attribute_string);
-
-impl<C: State> ToAttribute<C> for char {
-    type AttributeKind = char;
-
-    #[inline]
-    fn calc_attribute(self, _name: &'static str, _node: &web_sys::Element) -> AttributeResult<C> {
-        AttributeResult::SetIt(Some(Cow::from(self.to_string())))
+impl<C: State> Default for Attribute<C> {
+    fn default() -> Self {
+        Self(MaybeDeferred::Static(None))
     }
 }
 
-/// generate `ToAttribute` for a numeric
-macro_rules! attribute_numeric {
-    ($t:ident, $fmt:ident, $name:ident) => {
-        impl<C: State> ToAttribute<C> for $t {
-            type AttributeKind = $name;
-
-            #[inline]
-            fn calc_attribute(
-                self,
-                _name: &'static str,
-                _node: &web_sys::Element,
-            ) -> AttributeResult<C> {
-                let mut buffer = $fmt::Buffer::new();
-                let result = buffer.format(self);
-
-                AttributeResult::SetIt(Some(Cow::from(result.to_string())))
-            }
-        }
-    };
-}
-
-type_macros::numerics!(attribute_numeric);
-
-impl<C: State> ToAttribute<C> for bool {
-    type AttributeKind = bool;
-
-    #[inline]
-    fn calc_attribute(self, _name: &'static str, _node: &web_sys::Element) -> AttributeResult<C> {
-        AttributeResult::SetIt(self.then(|| Cow::from("")))
+impl<C: State> From<Cow<'static, str>> for Attribute<C> {
+    fn from(value: Cow<'static, str>) -> Self {
+        Self(MaybeDeferred::Static(Some(value)))
     }
 }
 
-impl<C: State, T: ToAttribute<C>> ToAttribute<C> for Option<T> {
-    type AttributeKind = T::AttributeKind;
+impl<C: State> WebValue<Attribute<C>> for bool {
+    type Kind = bool;
 
     #[inline]
-    fn calc_attribute(self, name: &'static str, node: &web_sys::Element) -> AttributeResult<C> {
-        if let Some(inner) = self {
-            inner.calc_attribute(name, node)
-        } else {
-            AttributeResult::SetIt(None)
-        }
+    fn resolve(self, _arguments: (&'static str, &web_sys::Element)) -> Attribute<C> {
+        Attribute(MaybeDeferred::Static(self.then(|| Cow::from(""))))
     }
 }
 
-impl<C: State, T: ToAttribute<C, AttributeKind = K>, E: ToAttribute<C, AttributeKind = K>, K>
-    ToAttribute<C> for Result<T, E>
-{
-    type AttributeKind = K;
+impl SupportedBy<bool> for bool {}
 
-    #[inline]
-    fn calc_attribute(self, name: &'static str, node: &web_sys::Element) -> AttributeResult<C> {
-        match self {
-            Ok(inner) => inner.calc_attribute(name, node),
-            Err(inner) => inner.calc_attribute(name, node),
-        }
-    }
-}
-
-impl<F, C, R> ToAttribute<C> for F
+impl<F, C, R> WebValue<Attribute<C>> for F
 where
     F: Fn(RenderCtx<C>) -> R + 'static,
-    R: ToAttribute<C>,
+    R: WebValue<Attribute<C>>,
     C: State,
 {
-    type AttributeKind = R::AttributeKind;
+    type Kind = R::Kind;
 
     #[inline]
-    fn calc_attribute(self, name: &'static str, node: &web_sys::Element) -> AttributeResult<C> {
+    fn resolve(self, (name, node): (&'static str, &web_sys::Element)) -> Attribute<C> {
         let node = node.clone();
 
-        AttributeResult::IsDynamic(Box::new(move |ctx, render_state| {
-            let hook = SimpleReactive::init_new(
-                Box::new(move |callback_ctx, callback_node| {
-                    match self(callback_ctx).calc_attribute(name, callback_node) {
-                        AttributeResult::SetIt(value) => {
-                            SimpleReactiveResult::Apply(ReactiveAttribute { name, data: value })
+        Attribute(MaybeDeferred::Deferred(Box::new(
+            move |ctx, render_state| {
+                let hook = SimpleReactive::init_new(
+                    Box::new(move |callback_ctx, callback_node| {
+                        match self(callback_ctx).resolve((name, callback_node)).0 {
+                            MaybeDeferred::Static(value) => {
+                                SimpleReactiveResult::Apply(ReactiveAttribute { name, data: value })
+                            }
+                            MaybeDeferred::Deferred(inner) => SimpleReactiveResult::Call(inner),
                         }
-                        AttributeResult::IsDynamic(inner) => SimpleReactiveResult::Call(inner),
-                    }
-                }),
-                node.clone(),
-                ctx,
-            );
-            render_state.hooks.push(hook);
-        }))
+                    }),
+                    node.clone(),
+                    ctx,
+                );
+                render_state.hooks.push(hook);
+            },
+        )))
     }
 }
 
@@ -191,43 +108,46 @@ macro_rules! define_attribute_enum {
                 )?
             }
 
-            impl<C: State> ToAttribute<C> for $name {
-                type AttributeKind = $name;
+            impl<C: State> WebValue<Attribute<C>> for $name {
+                type Kind = $name;
 
                 #[inline]
-                fn calc_attribute(self, _name: &'static str, _node: &web_sys::Element) -> AttributeResult<C> {
-                    AttributeResult::SetIt(Some(match self {
+                fn resolve(self, _args: (&'static str, &web_sys::Element)) -> Attribute<C> {
+                    Attribute::from(match self {
                         $(
-                            Self::$variant => intern($string_value).into(),
+                            Self::$variant => Cow::Borrowed(intern($string_value)),
                         )*
                         $(
                             Self::$other(value) => value
                         )?
-                    }))
+                    })
                 }
             }
+
+            impl SupportedBy<$name> for $name {}
         }
     };
 }
 
-/// Impl `ToAttribute` for a vec for another attribute using a space separated list
-#[macro_export]
+/// Impl `WebValue<Attribute>` for a vec of another attribute using a space separated list.
+///
+/// Attributes taking a list should bound on `SupportedBy<Vec<T>>`, which accepts both a `Vec<T>`
+/// and a single `T`.
 macro_rules! impl_to_attribute_for_vec {
     ($T:ty) => {
-        impl<C: State> ToAttribute<C> for Vec<$T> {
-            type AttributeKind = $T;
+        impl SupportedBy<Vec<$T>> for Vec<$T> {}
+        impl SupportedBy<Vec<$T>> for $T {}
+
+        impl<C: State> WebValue<Attribute<C>> for Vec<$T> {
+            type Kind = Vec<$T>;
 
             #[inline]
-            fn calc_attribute(
-                self,
-                name: &'static str,
-                node: &web_sys::Element,
-            ) -> AttributeResult<C> {
+            fn resolve(self, (name, node): (&'static str, &web_sys::Element)) -> Attribute<C> {
                 let result = self
                     .into_iter()
                     .map(|item| {
-                        if let AttributeResult::SetIt(Some(value)) =
-                            ToAttribute::<C>::calc_attribute(item, name, node)
+                        if let MaybeDeferred::Static(Some(value)) =
+                            WebValue::<Attribute<C>>::resolve(item, (name, node)).0
                         {
                             value
                         } else {
@@ -241,7 +161,7 @@ macro_rules! impl_to_attribute_for_vec {
                     })
                     .collect::<Vec<_>>()
                     .join(" ");
-                AttributeResult::SetIt(Some(Cow::from(result)))
+                Attribute::from(Cow::from(result))
             }
         }
     };
@@ -256,21 +176,19 @@ macro_rules! define_bool_attribute {
         #[derive(Default, Copy, Clone, PartialEq, Eq, Hash)]
         pub struct $struct_name(pub bool);
 
-        impl<C: State> ToAttribute<C> for $struct_name {
-            type AttributeKind = $struct_name;
+        impl<C: State> WebValue<Attribute<C>> for $struct_name {
+            type Kind = $struct_name;
 
-            fn calc_attribute(
-                self,
-                _name: &'static str,
-                _node: &web_sys::Element,
-            ) -> AttributeResult<C> {
-                AttributeResult::SetIt(Some(Cow::from(if self.0 {
+            fn resolve(self, _args: (&'static str, &web_sys::Element)) -> Attribute<C> {
+                Attribute::from(Cow::from(if self.0 {
                     intern($true_str)
                 } else {
                     intern($false_str)
-                })))
+                }))
             }
         }
+
+        impl SupportedBy<$struct_name> for $struct_name {}
     };
 }
 
@@ -609,18 +527,7 @@ define_attribute_enum! {
     }
 }
 
-impl<C: State> ToAttribute<C> for Vec<Id> {
-    type AttributeKind = Vec<Id>;
-
-    fn calc_attribute(self, _name: &'static str, _node: &web_sys::Element) -> AttributeResult<C> {
-        let result = self
-            .into_iter()
-            .map(|id| id.0)
-            .collect::<Vec<_>>()
-            .join(" ");
-        AttributeResult::SetIt(Some(Cow::Owned(result)))
-    }
-}
+impl_to_attribute_for_vec!(Id);
 
 /// Define a stringy enum with a `.render` method
 macro_rules! define_stringy_enum {
@@ -771,11 +678,10 @@ pub enum AutoComplete {
     },
 }
 
-impl<C: State> ToAttribute<C> for AutoComplete {
-    type AttributeKind = AutoComplete;
+impl<C: State> WebValue<Attribute<C>> for AutoComplete {
+    type Kind = AutoComplete;
 
-    #[inline]
-    fn calc_attribute(self, _name: &'static str, _node: &web_sys::Element) -> AttributeResult<C> {
+    fn resolve(self, _args: (&'static str, &web_sys::Element)) -> Attribute<C> {
         let result = match self {
             AutoComplete::On => Cow::Borrowed(intern("on")),
             AutoComplete::Off => Cow::Borrowed(intern("off")),
@@ -817,18 +723,20 @@ impl<C: State> ToAttribute<C> for AutoComplete {
             }
         };
 
-        AttributeResult::SetIt(Some(result))
+        Attribute::from(result)
     }
 }
 
-impl<C: State> ToAttribute<C> for AutocompleteKind {
-    type AttributeKind = AutoComplete;
+impl<C: State> WebValue<Attribute<C>> for AutocompleteKind {
+    type Kind = AutoComplete;
 
     #[inline]
-    fn calc_attribute(self, _name: &'static str, _node: &web_sys::Element) -> AttributeResult<C> {
-        AttributeResult::SetIt(Some(Cow::Borrowed(self.render())))
+    fn resolve(self, _args: (&'static str, &web_sys::Element)) -> Attribute<C> {
+        Attribute::from(Cow::Borrowed(self.render()))
     }
 }
+
+impl SupportedBy<AutoComplete> for AutoComplete {}
 
 define_attribute_enum! {
     #[derive(Default, Copy)]
