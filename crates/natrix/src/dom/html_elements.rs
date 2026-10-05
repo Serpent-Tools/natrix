@@ -14,6 +14,7 @@
 //! # ;
 //! ```
 
+use std::borrow::Cow;
 #[cfg(debug_assertions)]
 use std::collections::HashSet;
 use std::marker::PhantomData;
@@ -23,21 +24,30 @@ use smallvec::SmallVec;
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::{JsCast, intern};
 
-use super::attributes::AttributeResult;
-use super::classes::ClassResult;
+use super::attributes::Attribute;
+use super::classes::ClassName;
 use crate::css::selectors::{CompoundSelector, IntoCompoundSelector, SimpleSelector};
-use crate::dom::element::{Element, MaybeStaticElement, generate_fallback_node};
+use crate::dom::attributes;
+use crate::dom::element::{MaybeStaticElement, Node, generate_fallback_node};
 use crate::dom::events::{Event, EventHandler};
-use crate::dom::{ToAttribute, ToClass, attributes};
 use crate::error_handling::{log_or_panic, log_or_panic_result};
 use crate::prelude::Id;
 use crate::reactivity::State;
 use crate::reactivity::context::InnerCtx;
 use crate::reactivity::core::RenderingState;
-use crate::{EventCtx, get_document};
+use crate::web_value::{SupportedBy, WebValue};
+use crate::{Element, EventCtx, get_document, web_value};
 
 /// A deferred function to do something once state is available
 pub(crate) type DeferredFunc<C> = Box<dyn FnOnce(&mut InnerCtx<C>, &mut RenderingState)>;
+
+/// A string value that is either known immediately or needs state to be computed.
+pub(crate) enum MaybeDeferred<C: State> {
+    /// The value is known, `None` means the value is absent (i.e the attribute/class is removed).
+    Static(Option<Cow<'static, str>>),
+    /// The value requires state
+    Deferred(DeferredFunc<C>),
+}
 
 /// Indicates the given element is allowed to children
 /// This will catch errors such as:
@@ -207,7 +217,7 @@ impl<C: State, T> HtmlElement<C, T> {
     where
         T: CanHaveChild,
     {
-        let node = match child.render() {
+        let node = match child.resolve(()).0 {
             MaybeStaticElement::Static(result) => result.into_node(),
             MaybeStaticElement::Html(html) => {
                 self.deferred.extend(html.deferred);
@@ -247,7 +257,7 @@ impl<C: State, T> HtmlElement<C, T> {
 
     /// Set a attribute on the node.
     #[inline]
-    pub fn attr(mut self, key: &'static str, value: impl ToAttribute<C>) -> Self {
+    pub fn attr(mut self, key: &'static str, value: impl WebValue<Attribute<C>>) -> Self {
         #[cfg(debug_assertions)]
         {
             if self.seen_attributes.contains(key) {
@@ -259,8 +269,8 @@ impl<C: State, T> HtmlElement<C, T> {
             self.seen_attributes.insert(key);
         }
 
-        match value.calc_attribute(intern(key), &self.element) {
-            AttributeResult::SetIt(res) => {
+        match value.resolve((intern(key), &self.element)).0 {
+            MaybeDeferred::Static(res) => {
                 if let Some(res) = res {
                     log_or_panic_result!(
                         self.element.set_attribute(key, &res),
@@ -268,7 +278,7 @@ impl<C: State, T> HtmlElement<C, T> {
                     );
                 }
             }
-            AttributeResult::IsDynamic(dynamic) => {
+            MaybeDeferred::Deferred(dynamic) => {
                 #[cfg(debug_assertions)]
                 {
                     if self.reactive_attributes.contains(key) {
@@ -289,9 +299,9 @@ impl<C: State, T> HtmlElement<C, T> {
 
     /// Add a class to the element.
     #[inline]
-    pub fn class(mut self, class: impl ToClass<C> + 'static) -> Self {
-        match class.calc_class(&self.element) {
-            ClassResult::SetIt(res) => {
+    pub fn class(mut self, class: impl WebValue<ClassName<C>>) -> Self {
+        match class.resolve(&self.element).0 {
+            MaybeDeferred::Static(res) => {
                 if let Some(res) = res {
                     log_or_panic_result!(
                         self.element.class_list().add_1(intern(&res)),
@@ -299,7 +309,7 @@ impl<C: State, T> HtmlElement<C, T> {
                     );
                 }
             }
-            ClassResult::Dynamic(dynamic) => {
+            MaybeDeferred::Deferred(dynamic) => {
                 self.deferred.push(Box::new(dynamic));
             }
         }
@@ -309,7 +319,7 @@ impl<C: State, T> HtmlElement<C, T> {
 
     /// Add multiple classes
     #[inline]
-    pub fn classes<Cls: ToClass<C> + 'static>(
+    pub fn classes<Cls: WebValue<ClassName<C>>>(
         mut self,
         class_list: impl IntoIterator<Item = Cls>,
     ) -> Self {
@@ -332,10 +342,12 @@ impl<C: State, T> HtmlElement<C, T> {
     }
 }
 
-impl<C: State, T: 'static> Element<C> for HtmlElement<C, T> {
+impl<C: State, T: 'static> WebValue<Node<C>> for HtmlElement<C, T> {
+    type Kind = Node<C>;
+
     #[inline]
-    fn render(self) -> MaybeStaticElement<C> {
-        MaybeStaticElement::Html(self.generic())
+    fn resolve(self, _arguments: ()) -> Node<C> {
+        Node(MaybeStaticElement::Html(self.generic()))
     }
 }
 
@@ -386,7 +398,7 @@ macro_rules! attr_helpers {
                     #[doc = "<https://developer.mozilla.org/docs/Web/HTML/Reference/Elements/" $tag "##" $attr_name ">"]
                     $(#[doc(alias = $alias)])?
                     #[inline]
-                    pub fn $attr(self, value: impl ToAttribute<C, AttributeKind = $kind>) -> Self {
+                    pub fn $attr(self, value: impl WebValue<Attribute<C>, Kind: SupportedBy<$kind>>) -> Self {
                         self.attr($attr_name, value)
                        }
                 )+
@@ -403,7 +415,7 @@ macro_rules! global_attrs {
                 $(
                     #[doc = "<https://developer.mozilla.org/docs/Web/HTML/Reference/Global_attributes/" $attr_value ">"]
                     #[inline]
-                    pub fn $attr(self, value: impl ToAttribute<C, AttributeKind=$kind>) -> Self {
+                    pub fn $attr(self, value: impl WebValue<Attribute<C>, Kind: SupportedBy<$kind>>) -> Self {
                         self.attr($attr_value, value)
                     }
                 )*
@@ -420,7 +432,7 @@ macro_rules! aria_attrs {
                 $(
                     #[doc = "<https://developer.mozilla.org/docs/Web/Accessibility/ARIA/Reference/Attributes/aria%2d" $attr ">"]
                     #[inline]
-                    pub fn [<aria_$attr>](self, value: impl ToAttribute<C>) -> Self {
+                    pub fn [<aria_$attr>](self, value: impl WebValue<Attribute<C>>) -> Self {
                         self.attr(concat!("aria-", stringify!($attr)), value)
                     }
                 )*
@@ -471,7 +483,7 @@ global_attrs! {
     access_key(char, "accesskey"), auto_focus(bool, "autofocus"), content_editable(attributes::ContentEditable, "contenteditable"),
     dir(attributes::Direction, "dir"), draggable(attributes::TrueFalse, "draggable"), enter_key_hint(attributes::EnterkeyHint, "enterkeyhint"),
     hidden(bool, "hidden"), id(Id, "id"), inert(bool, "inert"), input_mode(attributes::InputMode, "inputmode"), lang(String, "lang"),
-    popover(attributes::PopOver, "popover"), spellcheck(bool, "spellcheck"), tab_index(attributes::Integer, "tabindex"),
+    popover(attributes::PopOver, "popover"), spellcheck(bool, "spellcheck"), tab_index(web_value::Integer, "tabindex"),
     title(String, "title"), translate(attributes::YesNo, "translate"), auto_capitalize(attributes::AutoCapitalize, "autocapitalize")
 }
 
@@ -504,7 +516,7 @@ aria_attrs! {
 
 attr_helpers!(a =>
     download(bool, "download"), href(String, "href"), href_lang(String, "hreflang"),
-    ping(String, "ping"), referrer_policy(attributes::ReferrerPolicy, "referrerpolicy"), rel(attributes::Rel, "rel"),
+    ping(String, "ping"), referrer_policy(attributes::ReferrerPolicy, "referrerpolicy"), rel(Vec<attributes::Rel>, "rel"),
     target(attributes::Target, "target")
 );
 
@@ -526,10 +538,10 @@ impl<C: State> HtmlElement<C, TagA> {
 attr_helpers!(area =>
     alt(String, "alt"), coords(String, "coords"), download(bool, "download"),
     href(String, "href"), ping(String, "ping"), referrer_policy(attributes::ReferrerPolicy, "referrerpolicy"),
-    rel(attributes::Rel, "rel"), shape(attributes::Shape, "shape"), target(attributes::Target, "target")
+    rel(Vec<attributes::Rel>, "rel"), shape(attributes::Shape, "shape"), target(attributes::Target, "target")
 );
 attr_helpers!(audio =>
-    auto_play(bool, "autoplay"), controls(bool, "controls"), controls_list(attributes::ControlsList, "controlslist"),
+    auto_play(bool, "autoplay"), controls(bool, "controls"), controls_list(Vec<attributes::ControlsList>, "controlslist"),
     cross_origin(attributes::CrossOrigin, "crossorigin"), disable_remote_playback(bool, "disableremoteplayback"),
     loop_audio(bool, "loop"), muted(bool, "muted"), preload(attributes::ContentPreload, "preload"), src(String, "src")
 );
@@ -542,28 +554,28 @@ attr_helpers!(button =>
     name(String, "name"), popover_target(Id, "popovertarget"),
     popover_target_action(attributes::PopoverAction, "popovertargetaction"), button_type(attributes::ButtonType, "type"), value(String, "value")
 );
-attr_helpers!(canvas => height(attributes::Integer, "height"), width(attributes::Integer, "width"));
-attr_helpers!(col => span(attributes::Integer, "span"));
-attr_helpers!(colgroup => span(attributes::Integer, "span"));
+attr_helpers!(canvas => height(web_value::Integer, "height"), width(web_value::Integer, "width"));
+attr_helpers!(col => span(web_value::Integer, "span"));
+attr_helpers!(colgroup => span(web_value::Integer, "span"));
 attr_helpers!(data => value(String, "data"));
 attr_helpers!(del => cite(String, "cite"));
 attr_helpers!(details => open(bool, "open"), name(String, "name"));
 attr_helpers!(dialog => open(bool, "open"));
 attr_helpers!(embed =>
-    height(attributes::Integer, "height"), width(attributes::Integer, "width"),
+    height(web_value::Integer, "height"), width(web_value::Integer, "width"),
     src(String, "src"), mime_type(String, "type")
 );
 attr_helpers!(fieldset => disabled(bool, "disabled"), form(Id, "form"), name(String, "name"));
 attr_helpers!(form =>
-    auto_complete(attributes::OnOff, "autocomplete"), name(String, "name"), rel(attributes::Rel, "rel"),
+    auto_complete(attributes::OnOff, "autocomplete"), name(String, "name"), rel(Vec<attributes::Rel>, "rel"),
     action(String, "action"), encoding_type(attributes::EncodingType, "enctype", "enctype"), method(attributes::FormMethod, "method"),
     no_validate(bool, "novalidate"), target(attributes::Target, "target")
 );
 
 attr_helpers!(iframe =>
-    height(attributes::Integer, "height"), loading(attributes::Loading, "loading"),
+    height(web_value::Integer, "height"), loading(attributes::Loading, "loading"),
     name(String, "name"), referrer_policy(attributes::ReferrerPolicy, "referrerpolicy"),
-    sandbox(attributes::SandboxAllow, "sandbox"), src(String, "src"), srcdoc(String, "srcdoc"), width(attributes::Integer, "width")
+    sandbox(Vec<attributes::SandboxAllow>, "sandbox"), src(String, "src"), srcdoc(String, "srcdoc"), width(web_value::Integer, "width")
 );
 
 impl<C: State> HtmlElement<C, TagIframe> {
@@ -579,31 +591,31 @@ impl<C: State> HtmlElement<C, TagIframe> {
 
 attr_helpers!(img =>
     alt(String, "alt"), cross_origin(attributes::CrossOrigin, "crossorigin"), decoding(attributes::ImageDecoding, "decoding"),
-    fetch_priority(attributes::FetchPriority, "fetchpriority"), height(attributes::Integer, "height"), is_map(bool, "ismap"),
+    fetch_priority(attributes::FetchPriority, "fetchpriority"), height(web_value::Integer, "height"), is_map(bool, "ismap"),
     loading(attributes::Loading, "loading"), referrer_policy(attributes::ReferrerPolicy, "referrerpolicy"),
-    src(String, "src"), width(attributes::Integer, "width"), use_map(String, "usemap")
+    src(String, "src"), width(web_value::Integer, "width"), use_map(String, "usemap")
 );
 
 attr_helpers!(ins => cite(String, "cite"));
 attr_helpers!(label => is_for(Id, "for"));
-attr_helpers!(li => value(attributes::Integer, "value"));
+attr_helpers!(li => value(web_value::Integer, "value"));
 attr_helpers!(map => name(String, "name"));
 
 attr_helpers!(meter =>
-    value(attributes::Float, "value"),
-    min(attributes::Float, "min"), max(attributes::Float, "max"),
-    high(attributes::Float, "high"), low(attributes::Float, "low"),
-    optimum(attributes::Float, "optimum"),
+    value(web_value::Float, "value"),
+    min(web_value::Float, "min"), max(web_value::Float, "max"),
+    high(web_value::Float, "high"), low(web_value::Float, "low"),
+    optimum(web_value::Float, "optimum"),
     form(Id, "form")
 );
 
 attr_helpers!(object =>
-    data(String, "data"), form(Id, "form"), height(attributes::Integer, "height"),
-    name(String, "name"), object_type(String, "type"), width(attributes::Integer, "width")
+    data(String, "data"), form(Id, "form"), height(web_value::Integer, "height"),
+    name(String, "name"), object_type(String, "type"), width(web_value::Integer, "width")
 );
 
 attr_helpers!(ol =>
-    reversed(bool, "reversed"), start(attributes::Integer, "start"), numeric_type(attributes::ListNumberingKind, "type")
+    reversed(bool, "reversed"), start(web_value::Integer, "start"), numeric_type(attributes::ListNumberingKind, "type")
 );
 
 attr_helpers!(optgroup => disabled(bool, "disabled"), label(String, "label"));
@@ -612,30 +624,30 @@ attr_helpers!(option =>
     selected(bool, "selected"), value(String, "value")
 );
 attr_helpers!(output => is_for(Vec<Id>, "for"), form(Id, "form"), name(String, "name"));
-attr_helpers!(progress => max(attributes::Float, "max"), values(attributes::Float, "value"));
+attr_helpers!(progress => max(web_value::Float, "max"), values(web_value::Float, "value"));
 attr_helpers!(q => cite(String, "cite"));
 attr_helpers!(select =>
     auto_complete(attributes::AutoComplete, "autocomplete"),
     disabled(bool, "disabled"), form(Id, "form"), multiple(bool, "multiple"),
-    name(String, "name"), required(bool, "required"), size(attributes::Integer, "size")
+    name(String, "name"), required(bool, "required"), size(web_value::Integer, "size")
 );
 
 attr_helpers!(source =>
     source_type(String, "type"), src(String, "src"),
-    height(attributes::Integer, "height"), width(attributes::Integer, "width")
+    height(web_value::Integer, "height"), width(web_value::Integer, "width")
 );
 attr_helpers!(textarea =>
     auto_complete(attributes::AutoComplete, "autocomplete"),
-    auto_correct(attributes::OnOff, "autocorrect"), columns(attributes::Integer, "cols"),
-    direction_name(String, "dirname"), disabled(bool, "disabled"), form(Id, "form"), max_length(attributes::Integer, "maxlength"),
-    min_length(attributes::Integer, "min_length"), name(String, "name"), placeholder(String, "placeholder"),
-    read_only(bool, "readonly"), required(bool, "required"), rows(attributes::Integer, "rows"),
+    auto_correct(attributes::OnOff, "autocorrect"), columns(web_value::Integer, "cols"),
+    direction_name(String, "dirname"), disabled(bool, "disabled"), form(Id, "form"), max_length(web_value::Integer, "maxlength"),
+    min_length(web_value::Integer, "min_length"), name(String, "name"), placeholder(String, "placeholder"),
+    read_only(bool, "readonly"), required(bool, "required"), rows(web_value::Integer, "rows"),
     wrap(attributes::Wrap, "wrap")
 );
 
 attr_helpers!(th =>
-    abbreviated(String, "abbr"), column_span(attributes::Integer, "colspan"), headers(Vec<Id>, "headers"),
-    row_span(attributes::Integer, "row_span"), scope(attributes::TableHeadingScope, "scope")
+    abbreviated(String, "abbr"), column_span(web_value::Integer, "colspan"), headers(Vec<Id>, "headers"),
+    row_span(web_value::Integer, "row_span"), scope(attributes::TableHeadingScope, "scope")
 );
 
 // todo: <time>
@@ -645,9 +657,9 @@ attr_helpers!(track =>
 );
 
 attr_helpers!(video =>
-    auto_play(bool, "autoplay"), controls(bool, "controls"), controls_list(attributes::ControlsList, "controlslist"),
+    auto_play(bool, "autoplay"), controls(bool, "controls"), controls_list(Vec<attributes::ControlsList>, "controlslist"),
     cross_origin(attributes::CrossOrigin, "crossorigin"), disable_picture_in_picture(bool, "disablepictureinpicture"), disable_remote_playback(bool, "disableremoteplayback"),
-    height(attributes::Integer, "height"), loop_video(bool, "loop"), muted(bool, "muted"),
+    height(web_value::Integer, "height"), loop_video(bool, "loop"), muted(bool, "muted"),
     plays_inline(bool, "playsinline"), poster(String, "poster"),
-    preload(attributes::ContentPreload, "preload"), src(String, "src"), width(attributes::Integer, "width")
+    preload(attributes::ContentPreload, "preload"), src(String, "src"), width(web_value::Integer, "width")
 );

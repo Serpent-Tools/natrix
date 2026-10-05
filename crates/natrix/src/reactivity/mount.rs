@@ -106,7 +106,8 @@ pub fn render_state<C: State>(
         hooks: &mut hooks,
     };
     let node = tree
-        .render()
+        .resolve(())
+        .0
         .render_static(&mut borrow_data, &mut render_state)
         .into_node();
 

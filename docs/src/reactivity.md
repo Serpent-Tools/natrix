@@ -57,8 +57,28 @@ e::div()
 
 ```
 
+```rust
+# extern crate natrix;
+# use natrix::prelude::*;
+# #[derive(State)]
+# struct HelloWorld {
+#     counter: Signal<u8>,
+# }
+# fn render_hello_world() -> impl Element<HelloWorld> {
+e::div()
+    .child(|ctx: RenderCtx<HelloWorld>| {
+        if *ctx.counter > 10 {
+            Ok(e::h1().text("Such big"))
+        } else {
+            Err("Oh no such small")
+        }
+    })
+# }
+
+```
+
 > [!TIP]
-> For handling multiple types of html elements, theres [`.generic()`](natrix::dom::html_elements::HtmlElement::generic), which returns `HtmlElement<C, ()>`, i.e erases the dom tag, allowing you to for example construct different tags in a `if`, and then later call methods on it. Ofc doing this means only global attribute helpers can be used, but you can always use `.attr` directly.
+> For handling multiple types of html elements, theres [`.generic()`](natrix::dom::html_elements::HtmlElement::generic), which returns `HtmlElement<C, ()>`, i.e erases the dom tag, allowing you to for example construct different tags in a `if`, and then later call methods on it. Ofc doing this means only global attribute helpers can be used, but you can always use `.attr` directly. 
 
 ## Signal-based Reactivity
 

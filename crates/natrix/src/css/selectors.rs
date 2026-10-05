@@ -1,9 +1,13 @@
 //! Css selectors
 
+use std::borrow::Cow;
 use std::ops::Deref;
 
 use crate::css::IntoCss;
+use crate::dom::html_elements::MaybeDeferred;
+use crate::dom::{Attribute, ClassName};
 use crate::error_handling::log_or_panic_assert;
+use crate::web_value::{SupportedBy, WebValue};
 
 /// A list of selectors (`,`)
 #[derive(Debug, Clone)]
@@ -360,9 +364,11 @@ impl IntoSimpleSelector for SimpleSelector {
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Class(pub &'static str);
 
-impl<C: crate::reactivity::State> crate::dom::ToClass<C> for Class {
-    fn calc_class(self, _node: &web_sys::Element) -> crate::dom::classes::ClassResult<C> {
-        crate::dom::classes::ClassResult::SetIt(Some(self.0.into()))
+impl<C: crate::reactivity::State> WebValue<ClassName<C>> for Class {
+    type Kind = ClassName<C>;
+
+    fn resolve(self, _node: &web_sys::Element) -> ClassName<C> {
+        ClassName(MaybeDeferred::Static(Some(self.0.into())))
     }
 }
 
@@ -403,17 +409,15 @@ macro_rules! class {
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Id(pub &'static str);
 
-impl<C: crate::reactivity::State> crate::dom::ToAttribute<C> for Id {
-    type AttributeKind = Id;
+impl<C: crate::reactivity::State> WebValue<Attribute<C>> for Id {
+    type Kind = Id;
 
-    fn calc_attribute(
-        self,
-        _name: &'static str,
-        _node: &web_sys::Element,
-    ) -> crate::dom::attributes::AttributeResult<C> {
-        crate::dom::attributes::AttributeResult::SetIt(Some(self.0.into()))
+    fn resolve(self, _args: (&'static str, &web_sys::Element)) -> Attribute<C> {
+        Attribute::from(Cow::Borrowed(self.0))
     }
 }
+
+impl SupportedBy<Id> for Id {}
 
 impl IntoSimpleSelector for Id {
     fn into_simple(self) -> SimpleSelector {

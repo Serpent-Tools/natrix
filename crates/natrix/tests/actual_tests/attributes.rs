@@ -1,5 +1,6 @@
-use natrix::dom::ToAttribute;
+use natrix::dom::Attribute;
 use natrix::prelude::*;
+use natrix::web_value::WebValue;
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -9,7 +10,7 @@ const BUTTON: Id = natrix::id!();
 #[derive(State, Default)]
 struct Empty;
 
-fn render_with_attr<T: ToAttribute<Empty>>(attr_value: T) -> impl Element<Empty> {
+fn render_with_attr<T: WebValue<Attribute<Empty>>>(attr_value: T) -> impl Element<Empty> {
     e::div().attr("abc", attr_value).id(ROOT)
 }
 

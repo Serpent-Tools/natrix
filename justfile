@@ -1,8 +1,8 @@
 fast:
-    serpentine run --pipeline ./ci/snek/main.snek --entry-point FAST --jobs 8
+    serpentine run --pipeline ./ci/snek/main.snek --entry-point FAST 
 
 ci:
-    serpentine run --pipeline ./ci/snek/main.snek --jobs 8
+    serpentine run --pipeline ./ci/snek/main.snek 
 
 book:
     serpentine run --pipeline ./ci/snek/main.snek --entry-point BOOK

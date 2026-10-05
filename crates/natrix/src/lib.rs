@@ -11,6 +11,7 @@ pub mod panics;
 pub mod reactivity;
 pub mod test_utils;
 mod type_macros;
+pub mod web_value;
 
 pub use wasm_bindgen::intern;
 
