@@ -35,7 +35,7 @@ Natrix _only_ makes the following guarantees about when a callback will be calle
 Thats it, natrix does not make any guarantees about the order of sibling callbacks.
 
 ## Returning different kinds of elements.
-Sometimes two branches returns different kinds of elements, this can be solved using `Result`, or by pre-rendering them using [`.render`](natrix::dom::element::Element::render). Which produces the internal result of a element render (which itself implements `Element` for this exact purpose)
+Sometimes two branches return different kinds of elements, this can be solved using `Result`, or by pre-rendering them using [`.render`](natrix::dom::element::Element::render), which converts them to a [`Node`](natrix::dom::Node) (which itself implements `Element` for this exact purpose).
 
 ```rust
 # extern crate natrix;

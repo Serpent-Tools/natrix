@@ -14,6 +14,7 @@
 - [State](state.md)
 - [Reactivity](reactivity.md)
 - [Html](html.md)
+  - [Web Values](web-values.md)
 - [Async](async-components.md)
 - [Css](css.md)
 - [Assets](assets.md)
