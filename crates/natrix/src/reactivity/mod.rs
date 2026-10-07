@@ -4,14 +4,15 @@
 //! fine-grained updates. Key concepts:
 //!
 //! - **`Signal<T>`**: Reactive data primitives that track reads/writes
-//! - **`State` trait**: Marker for types that can be used as reactive state
+//! - **`State` trait**: Implemented by types that can be used as reactive state
 //! - **Context types**: `InnerCtx`, `RenderCtx`, `EventCtx`, `AsyncCtx` for different execution phases
 //! - **Reactive hooks**: Track dependencies and trigger targeted DOM updates
 //!
 //! ## Architecture
 //!
 //! The system has intentional cross-cutting concerns:
-//! - DOM elements become reactive through the `Element` trait (in `dom/`)
+//! - DOM elements, attributes, and classes become reactive through the closure `WebValue`
+//!   implementations (in `dom/`)
 //! - Reactive hooks for DOM updates live in `dom_hooks.rs`
 //! - The scheduler and hook storage live in `core.rs`
 //! - Higher-level features like `watch` and `guards` build on the core primitives

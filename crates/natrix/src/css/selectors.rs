@@ -23,7 +23,7 @@ pub struct SelectorList(pub Vec<FinalizedSelector>);
 /// # use natrix::selector_list;
 /// let _ = selector_list![
 ///     e::TagDiv, // This is of type `TagDiv`
-///     e::TagDiv.child(e::TagH1) // This is of type `CompoundSelector`
+///     e::TagDiv.child(e::TagH1) // This is of type `ComplexSelector`
 /// ];
 /// ```
 #[macro_export]
@@ -228,7 +228,7 @@ pub struct NthArgument {
 }
 
 impl NthArgument {
-    /// Every event numbered element
+    /// Every even numbered element
     pub const EVEN: Self = NthArgument {
         step: 2,
         offset: 0,
@@ -405,7 +405,7 @@ macro_rules! class {
     };
 }
 
-/// A id generate from the `id` macro
+/// An id generated from the `id` macro
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Id(pub &'static str);
 
@@ -471,7 +471,7 @@ pub trait IntoCompoundSelector: Sized {
     /// let _ = e::TagDiv.and(BTN);
     /// ```
     ///
-    /// This also enforces the invariant that you tags come first!
+    /// This also enforces the invariant that tags come first!
     /// ```compile_fail
     /// # use natrix::prelude::*;
     /// # use natrix::class;

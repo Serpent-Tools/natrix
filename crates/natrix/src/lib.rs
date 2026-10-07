@@ -16,7 +16,7 @@ pub mod web_value;
 pub use wasm_bindgen::intern;
 
 thread_local! {
-    /// A lazy initlized reference to the js document.
+    /// A lazy initialized reference to the js document.
     static DOCUMENT: web_sys::Document = {
         #[expect(
             clippy::expect_used,
@@ -28,7 +28,7 @@ thread_local! {
             .expect("Document object not found")
     };
 
-    /// A lazy initlized reference to the js window.
+    /// A lazy initialized reference to the js window.
     static WINDOW: web_sys::Window = {
         #[expect(
             clippy::expect_used,

@@ -214,7 +214,7 @@ impl<S: State, K: ReactiveValue + 'static> SimpleReactive<S, K> {
     }
 }
 
-/// Reactivly set a element attribute
+/// Reactively set an element attribute
 pub(crate) struct ReactiveAttribute {
     /// The attribute name to set
     pub(crate) name: &'static str,

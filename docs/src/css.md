@@ -1,7 +1,7 @@
 # Css
 
 > [!NOTE]
-> Natrixses css bundlinging system requires the use of the natrix cli.
+> Natrix's css bundling system requires the use of the natrix cli.
 > As such css bundling will not work when embedding natrix in other frameworks.
 
 Natrix uses a unique css bundling system that allows for css to be declared in rust files, but bundled at compile time.

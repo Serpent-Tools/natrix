@@ -14,7 +14,7 @@ pub mod macros {
     /// The asset format
     // IMPORTANT: Macro assumes encoding this cant fail
     #[derive(serde::Serialize, serde::Deserialize)]
-    pub enum MacroEmisson {
+    pub enum MacroEmission {
         /// An asset that needs bundling
         Asset {
             /// The file path to the asset

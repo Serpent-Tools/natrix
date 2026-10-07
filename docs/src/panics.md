@@ -5,7 +5,7 @@ The framework makes liberal use of debug only panics, but is very careful about 
 ## When does Natrix panic (in debug builds)?
 
 ### Very unlikely
-- **Js Environment Corruption** - If something causes requires javascript methods to be missing, or otherwise fail.
+- **Js Environment Corruption** - If something causes required javascript methods to be missing, or otherwise fail.
   - In release natrix will skip executing the action it attempted, for example creating a dom node.
 - **Unexpected Dom State** - If natrix cant find a expected dom node or the node isnt of the expected type.
   - Natrix will skip updating that part of the dom tree
@@ -27,4 +27,4 @@ The framework makes liberal use of debug only panics, but is very careful about 
 
 ## What does natrix do in the case of a panic?
 Unlike native rust, a panic in wasm does not prevent the program from continuing. This can lead to unexpected behavior if state is left in a invalid state, or worse lead to undefined behavior.
-Therefor natrix will always do its best to prevent further rust execution after a panic, this is done by checking a panic flag at the start of every event handler, natrix also effectively freezes all async code using a special wrapping future that stops propagation of `.poll` calls on panic. 
+Therefore natrix will always do its best to prevent further rust execution after a panic, this is done by checking a panic flag at the start of every event handler, natrix also effectively freezes all async code using a special wrapping future that stops propagation of `.poll` calls on panic. 

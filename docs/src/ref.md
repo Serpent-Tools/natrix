@@ -4,7 +4,7 @@ Natrix uses [`Ref`](natrix::access::Ref), which is effectively a enum over `&T` 
 This is to make getters easier to work with and write.
 
 ## Why?
-As you know natrix uses a global state store arithecture, 
+As you know natrix uses a global state store architecture, 
 which means to make components generic over which field they use we use getter closures.
 The issue is, we want the same getter to work for both `&` and `&mut`, this is where `Ref` comes in.
 A getter closure should return the same variant that it was given, which it will do if you stick to the `Ref` methods.
@@ -44,7 +44,7 @@ fn counter(value: impl Getter<App, u8>) -> impl Element<App> {
 > `impl Fn(Ref<App>) -> Option<Ref<u8>> + Clone + 'static`
 
 ### `.call_read`/`.call_mut`
-Calling these closures directly would require unwrapping on the result, even tho all valid closures should return a know variant.
+Calling these closures directly would require unwrapping on the result, even tho all valid closures should return a known variant.
 For this we provide the [`RefClosure`](natrix::access::RefClosure) trait, which provides the `.call_read` and `.call_mut` methods
 which wrap your reference in the appropriate variant and unwraps on the result. 
 
@@ -159,7 +159,7 @@ If you want to move multiple values into a closure you can use `()` and list the
 ### `Option<Ref<T>>` vs `Ref<Option<T>>`
 If you only need to know if the value is `Some`/`None`, but not modify the variant,
 you should opt for `Option<Ref<T>>`, as this allow for example a getter accessing a `Result<T, E>` to be used (via `.project().ok()`).
-Similar prinicibles apply in general.
+Similar principles apply in general.
 
 ### `T` vs `Ref<T>`
 Generally if the value is cheap to clone/copy and you only need read access a direct owned `T` is often better.
@@ -168,29 +168,29 @@ As this allows the value to be a constant, or even computed.
 ## Advanced
 
 > [!WARNING]
-> This section documents the various invariants and connventions for more low level usage of `Ref`
+> This section documents the various invariants and conventions for more low level usage of `Ref`
 > Most user code does not need to care about this.
 
 ### Core invariants
-* All closures and methods dealing with `Ref` must maintain its variant. A closure must never return a `Ref::FailableMut` when given a `Ref::Mut` for example.
+* All closures and methods dealing with `Ref` must maintain its variant. A closure must never return a `Ref::FaillableMut` when given a `Ref::Mut` for example.
 
-### `Ref::FailableMut` 
+### `Ref::FaillableMut`
 This variant is used in async context, which allows stuff like guards to return `None` in those cases.
 While still keeping their ergonomics (i.e internal panics) in sync code.
-When writing closures you have no way of knowing weather code will contains guards in the past or future, 
-and hence should always take extra care to make sure the propagation of `FailableMute` makes sense.
+When writing closures you have no way of knowing whether code will contain guards in the past or future,
+and hence should always take extra care to make sure the propagation of `FaillableMut` makes sense.
 
 ### Project
 At its core `Project` is simply a transformation from `Ref<Self>` to another type, usually the same as `Self`, but with different generics.
 Such as `Ref<Option<T>>` into `Option<Ref<T>>`.
-The more important point to pay attention to is with `FailableMut` handling.
+The more important point to pay attention to is with `FaillableMut` handling.
 Take this implementation of `Project` for options:
 ```rust,ignore
 impl<T> Project for Option<T> {
-    type Projected<'a>
-        = Option<Ref<'a, T>>
+    type Projected<'reference>
+        = Option<Ref<'reference, T>>
     where
-        Self: 'a;
+        Self: 'reference;
 
     fn project(value: Ref<'_, Self>) -> Self::Projected<'_> {
         match value {
@@ -206,11 +206,11 @@ impl<T> Project for Option<T> {
 ```
 As you see for a failed mut we return `Some(FaillableMut(None))`, why?  
 The core reason is that if we returned `None` then the `call_failable` call would actually return `Some(None)`, instead of the intended `None`,
-Because theres not way for it to know the `faillableMut` failed. Hence the general rule is to return a variant containing a `FaillableMut(None)`.
-This works for `Result` as well (which uses `Ok` for this case).
-If the value is later used in a guard closure, weather thats `Err` or `Ok` variant it will work out in the end.
-if it expects `Ok`, then it sucesffuly grabs the inner `FaillableMut(None)`, which when it gets to downgrade will result in `None`.
-if it expects a `Err`, then its logic will return `FaillableMut(None)` explicitly, which again means the final result is a `None`.
+Because theres no way for it to know the `FaillableMut` failed. Hence the general rule is to return a variant containing a `FaillableMut(None)`.
+This works for `Result` as well (which uses `Err` for this case).
+If the value is later used in a guard closure, whether thats `Err` or `Ok` variant it will work out in the end.
+if it expects `Err`, then it successfully grabs the inner `FaillableMut(None)`, which when it gets to downgrade will result in `None`.
+if it expects a `Ok`, then its logic will return `FaillableMut(None)` explicitly, which again means the final result is a `None`.
 
 ### Downgrade
 Downgrading is the act of converting all references in a struct/enum to the specified reference type.

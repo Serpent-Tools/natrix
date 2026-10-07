@@ -3,8 +3,6 @@
 /// Mark that a panic has happened
 static PANIC_HAPPENED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-thread_local! {}
-
 /// Has a panic occurred
 /// This is only needed for you to call if you are using custom callbacks passed to js.
 /// All natrix event handlers already check this.
@@ -45,11 +43,6 @@ pub fn set_panic_hook() {
 
 /// return from the function if a panic has happened
 macro_rules! return_if_panic {
-    ($val:expr) => {
-        if $crate::panics::has_panicked() {
-            return $val;
-        }
-    };
     () => {
         if $crate::panics::has_panicked() {
             return;

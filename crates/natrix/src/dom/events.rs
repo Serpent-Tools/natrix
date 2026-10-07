@@ -13,7 +13,7 @@ pub trait Event {
 }
 /// Utility trait for defining event handler in arguments.
 ///
-/// When defining a render function it is much easier to use `impl Event<C>` than writing out
+/// When defining a render function it is much easier to use `impl EventHandler<C, E>` than writing out
 /// the whole function trait yourself.
 ///
 /// ```
@@ -24,7 +24,7 @@ pub trait Event {
 /// }
 /// ```
 pub trait EventHandler<C, E: Event> {
-    /// Return self, but constrained to the expected typez
+    /// Return self, but constrained to the expected types
     fn func(self) -> impl Fn(EventCtx<C>, E::JsEvent) + 'static;
 }
 impl<C, E: Event, F: Fn(EventCtx<C>, E::JsEvent) + 'static> EventHandler<C, E> for F {

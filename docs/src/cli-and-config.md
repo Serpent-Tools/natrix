@@ -40,6 +40,10 @@ The `dev` command starts a local development server with live reloading.
 natrix dev
 ```
 
+- `--port`/`-p`: The port to serve on, defaults to `8000`, or a random free port if that is taken.
+- `--allow-external`: Bind to `0.0.0.0` instead of `127.0.0.1`.
+- `--no-reload`: Disable live reloading.
+
 ### Building for Production
 
 When you're ready to deploy your app, use the `build` command to create an optimized production build.
@@ -48,12 +52,19 @@ When you're ready to deploy your app, use the `build` command to create an optim
 natrix build
 ```
 
+- `--dist`/`-d`: The output folder, defaults to `./dist`.
+
+Both `dev` and `build` also accept:
+
+- `--profile`: `dev` or `release`, defaults to `dev` for `natrix dev` and `release` for `natrix build`.
+- `--invalidate-cache`: Invalidate the asset caches.
+
 ## Configuration
 
 Natrix can be configured through your project's `Cargo.toml` file. Add a `[package.metadata.natrix]` section to customize how Natrix builds your application.
 
 >[!IMPORTANT]
-> These options only take affect for production builds. For dev all these settings have sensible defaults.
+> These options only take effect for production builds. For dev all these settings have sensible defaults.
 
 ### Cache Busting
 

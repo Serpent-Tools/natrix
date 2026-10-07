@@ -1,4 +1,4 @@
-//! Implementation of the `Element` trait for various abstract types.
+//! The `Node` web value target, the `Element` alias, and `WebValue<Node<C>>` implementations.
 
 use std::borrow::Cow;
 

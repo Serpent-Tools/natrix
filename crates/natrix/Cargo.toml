@@ -50,7 +50,6 @@ serde = { workspace = true, optional = true, default-features = false, features 
 [features]
 default_app = ["console_log", "async"]
 
-ergonomic_ops = []
 console_log = ["dep:console_log"]
 async = ["dep:pin-project", "dep:wasm-bindgen-futures"]
 async_utils = ["async", "dep:futures-channel"]
@@ -58,7 +57,6 @@ serde = ["dep:serde"]
 
 test_utils = ["web-sys/console"]
 
-_internal_testing = ["test_utils"]
 _internal_collect_css = ["dep:inventory"]
 _internal_no_ssg = ["_internal_collect_css"]
 _internal_bundle = ["_internal_collect_css", "dep:simple_logger"]

@@ -9,9 +9,9 @@ use crate::reactivity::State;
 use crate::reactivity::context::RenderCtx;
 
 impl<S: State> RenderCtx<'_, '_, S> {
-    /// Get a guard lens that can be used to retrieve the `Some` variant of a option without having to
+    /// Get a guard getter that can be used to retrieve the `Some` variant of a option without having to
     /// use `.unwrap`.
-    /// Should be used to achieve find-grained reactivity (internally this uses `.watch` on `.is_some()`)
+    /// Should be used to achieve fine-grained reactivity (internally this uses `.watch` on `.is_some()`)
     ///
     /// # Why?
     /// The usecase can be seen by considering this logic:
@@ -63,16 +63,17 @@ impl<S: State> RenderCtx<'_, '_, S> {
     /// }
     /// # }}
     /// ```
-    /// Here `value_guard` is actually not the value at all, its a lightweight value thats can be
+    /// Here `value_guard` is actually not the value at all, its a lightweight value that can be
     /// captured by child closures and basically is a way to say "I know that in this context this
     /// value is `Some`"
     ///
-    /// Internally this uses `ctx.watch` and `.unwrap` (which should never fail)
+    /// Internally this uses `ctx.watch`, and the returned getter panics if the value is `None`
+    /// (which should never happen in its intended scope).
     /// Guard also functions on `Result`
     ///
     /// # Panics
-    /// The return method will panic if called outside intended scope.
-    /// Which in most cases means async.
+    /// The returned getter will panic if called outside intended scope,
+    /// unless called with `.call_failable`, in which case it returns `None`.
     #[inline]
     pub fn guard_option<F, T>(
         &mut self,

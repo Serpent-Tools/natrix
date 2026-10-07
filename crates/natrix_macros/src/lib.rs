@@ -12,11 +12,11 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 
 /// Create a array of elements based on the format string.
-/// The start of the macro is a closure argument list, which should generally be `|ctx: R<Self>|`
+/// The start of the macro is a closure argument list, which should generally be `|ctx: RenderCtx<App>|`
 /// or similar.
 ///
 /// ```ignore
-/// e::div().children(format_elements!(|ctx: R<Self>|, "progress: {}/{}", *ctx.current, *ctx.max))
+/// e::div().children(format_elements!(|ctx: RenderCtx<App>| "progress: {}/{}", *ctx.current, *ctx.max))
 /// ```
 #[proc_macro]
 pub fn format_elements(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -61,15 +61,6 @@ pub fn state_derive(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
-// /// Derive the `Projectable` trait for the given enum.
-// #[proc_macro_derive(Projectable)]
-// pub fn derive_projectable(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-//     let item = syn::parse_macro_input!(item as syn::ItemEnum);
-//     let name = item.ident.clone();
-//
-//
-// }
-
 /// If this is the first time a macro is used in this crate we should clear out the target folder
 static FIRST_USE_IN_CRATE: AtomicBool = AtomicBool::new(true);
 
@@ -78,7 +69,7 @@ static FILE_COUNTER: AtomicU32 = AtomicU32::new(0);
 
 /// Emit a file to the target directory
 fn emit_file(
-    content: &natrix_shared::macros::MacroEmisson,
+    content: &natrix_shared::macros::MacroEmission,
     settings: &natrix_shared::macros::Settings,
 ) {
     let first_use = FIRST_USE_IN_CRATE.fetch_and(false, Ordering::AcqRel);
@@ -121,7 +112,7 @@ fn emit_file(
 }
 
 /// Inform the bundling system to include the given asset
-/// Will return the url needed to fetch said asset at runtime (including the past path if set).
+/// Will return the url needed to fetch said asset at runtime (including the base path if set).
 ///
 /// ```ignore
 /// e::img()
@@ -189,7 +180,7 @@ pub fn asset(file_path: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .decode(settings.as_bytes())
         .expect("Corrupt base64 in settings var");
 
-    #[expect(clippy::expect_used, reason = "We should have a valid bincode config")]
+    #[expect(clippy::expect_used, reason = "We should have a valid json config")]
     let settings: natrix_shared::macros::Settings =
         natrix_shared::macros::serde_json::from_slice(&settings)
             .expect("Failed to decode settings");
@@ -197,7 +188,7 @@ pub fn asset(file_path: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let url = format!("{}/{target}", settings.base_path);
 
     let result = quote!(#url).into();
-    let asset = natrix_shared::macros::MacroEmisson::Asset {
+    let asset = natrix_shared::macros::MacroEmission::Asset {
         path: file_path,
         emitted_path: target,
     };
@@ -214,8 +205,7 @@ struct Field {
     access: TokenStream,
 }
 
-/// Retrieve abstract fields from a struct, as well as a boolean indicating whether its a named
-/// struct or not (unit structs are considered named)
+/// Retrieve abstract fields from a struct.
 pub(crate) fn get_fields(fields: syn::Fields) -> Vec<Field> {
     match fields {
         syn::Fields::Unit => vec![],

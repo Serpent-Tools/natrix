@@ -5,10 +5,10 @@
 When using the `dev` profile natrix will include both DWARF debugging information and a inline sourcemap.
 
 As of writing firefox does not support DWARF based debugging, and in our experience doesnt support wasm breakpoints (including sourcemap backed ones).
-Hence we recommend you use chromeium for debugging your applications.
+Hence we recommend you use chromium for debugging your applications.
 
 > [!TIP]
-> Chromeium works more than well enough with sourcemap only, but for even better debugging support you can install the [DWARF extension](https://chromewebstore.google.com/detail/cc++-devtools-support-dwa/pdcpmagijalfljmkmjngeonclgbbannb)
+> Chromium works more than well enough with sourcemap only, but for even better debugging support you can install the [DWARF extension](https://chromewebstore.google.com/detail/cc++-devtools-support-dwa/pdcpmagijalfljmkmjngeonclgbbannb)
 
 ## Logging
 

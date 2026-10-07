@@ -8,11 +8,11 @@ use std::ops::{Deref, DerefMut};
 ///
 /// INVARIANT: All closures dealing with these should preserve the enum variant.
 /// Meaning a closure that wants to downgrade a reference needs to just return `&T` instead.
-/// Natrix assumes all closure of the form `Fn(Ref<T>) -> Ref<R>` Maintain the variant given.
+/// Natrix assumes all closure of the form `Fn(Ref<T>) -> Ref<R>` maintain the variant given.
 ///
 /// INVARIANT: `Read` and `Mut` must only be created in render hooks and event handlers.
 /// *not* in async contexts or similar, as certain closures created by the framework assume sync
-/// invaraints are upheld.
+/// invariants are upheld.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Ref<'reference, T: ?Sized> {
     /// a `&T`
@@ -86,7 +86,7 @@ impl<'reference, T: ?Sized> From<&'reference mut T> for Ref<'reference, T> {
 /// for example `Ref<Option<T>>` to `Option<Ref<T>>`, basically a abstraction over the various
 /// `as_mut`/`as_ref` methods.
 pub trait Project: Sized {
-    /// The result of the projection, should contain `Ref`s with the `'a` lifetime.
+    /// The result of the projection, should contain `Ref`s with the `'reference` lifetime.
     type Projected<'reference>
     where
         Self: 'reference;
@@ -134,7 +134,7 @@ impl<T, E> Project for Result<T, E> {
 
 /// Trait for items that can be downgraded to references.
 /// Specifically this must be implemented for *types* that can represent both mutable and immutable
-/// references, i.e ones that build on `Ref`, a implementation with a constant `None` in `as_mut`
+/// references, i.e ones that build on `Ref`, a implementation with a constant `None` in `into_mut`
 /// should be considered broken.
 ///
 /// Note, to avoid unwraps in your code for this you can use `RefClosure` apis instead.
@@ -178,8 +178,8 @@ impl<'reference, T: ?Sized> Downgrade<'reference> for Ref<'reference, T> {
     }
 }
 
-// NOTE: We do not implement `Downgradable` for `&`
-// Because a type that always fails to downgrade into `&mut` is not a valid `Downgradble`
+// NOTE: We do not implement `Downgrade` for `&`
+// Because a type that always fails to downgrade into `&mut` is not a valid `Downgrade`
 impl<'reference, T: ?Sized> Downgrade<'reference> for &'reference mut T {
     type ReadOutput = &'reference T;
     type MutOutput = &'reference mut T;
@@ -247,7 +247,7 @@ pub trait RefClosure<'reference, I: ?Sized, T: Downgrade<'reference>> {
     fn call_read(&self, value: &'reference I) -> T::ReadOutput;
 
     /// Call the mut part of this path.
-    /// This will panic if the closure returns `Ref::Read` event if given a `Ref::Mut`
+    /// This will panic if the closure returns `Ref::Read` even if given a `Ref::Mut`
     /// (Which shouldnt happen for any well behaving implementation)
     ///
     /// INVARIANT: Must not be called from async, use `call_failable`

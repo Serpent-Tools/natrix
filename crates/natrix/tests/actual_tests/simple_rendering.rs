@@ -48,36 +48,3 @@ fn render_result_err() {
     let element = crate::get(HELLO_ID);
     assert_eq!(element.text_content(), Some("hey".to_owned()));
 }
-
-#[cfg(feature = "either")]
-mod either_test {
-    use either::Either;
-
-    use super::*;
-
-    #[wasm_bindgen_test]
-    fn render_either_left() {
-        crate::mount_test(
-            Empty,
-            e::div()
-                .id(HELLO_ID)
-                .child(Either::Left::<&str, &str>("hey")),
-        );
-
-        let element = crate::get(HELLO_ID);
-        assert_eq!(element.text_content(), Some("hey".to_owned()));
-    }
-
-    #[wasm_bindgen_test]
-    fn render_either_right() {
-        crate::mount_test(
-            Empty,
-            e::div()
-                .id(HELLO_ID)
-                .child(Either::Right::<&str, &str>("hey")),
-        );
-
-        let element = crate::get(HELLO_ID);
-        assert_eq!(element.text_content(), Some("hey".to_owned()));
-    }
-}

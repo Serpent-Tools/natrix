@@ -19,10 +19,11 @@ const MOUNT_PARENT: &str = "__TESTING_PARENT";
 pub const MOUNT_POINT: &str = "__TESTING_MOUNT_POINT";
 
 thread_local! {
-     static CURRENT_COMP: Cell<KeepAlive>  = Cell::new(Box::new(()));
+    /// Keeps the currently mounted test tree alive.
+    static CURRENT_TREE: Cell<KeepAlive> = Cell::new(Box::new(()));
 }
 
-/// Has a logger be initlized?
+/// Has a logger been initialized?
 static LOGGER_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// A simple  `log` logger that just prints to `console.log` for all levels.
@@ -64,7 +65,7 @@ pub fn mount_test<C: State>(state: C, tree: impl Element<C>) {
 
     log::debug!("Mounting test state {}", std::any::type_name::<C>());
     let result = render_state(state, tree, MOUNT_POINT).expect("Failed to mount");
-    CURRENT_COMP.with(|cell| cell.set(Box::new(result)));
+    CURRENT_TREE.with(|cell| cell.set(Box::new(result)));
 }
 
 /// Setup `MOUNT_POINT` as a valid mount location

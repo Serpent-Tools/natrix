@@ -52,7 +52,7 @@ use define_css_shorthand;
 /// If the value isnt a valid const expression this wont compile.
 ///
 /// This is to allow you to use the various failable constructors with literal values
-/// without hawving to disable any lints you have enabled against unwraps/expects
+/// without having to disable any lints you have enabled against unwraps/expects
 ///
 /// ```
 /// natrix::const_unwrap!(natrix::css::values::Color::rgba(100, 100, 100, 0.5));
@@ -75,7 +75,7 @@ macro_rules! const_unwrap {
 /// A css value thats valid in a property
 pub trait CssPropertyValue: IntoCss {
     /// The kind of value, this is used to enable some stuff like css variables.
-    /// But also allow us to easialy do things like declare a property supports numeics.
+    /// But also allow us to easily do things like declare a property supports numerics.
     type Kind;
 }
 
@@ -119,7 +119,7 @@ impl<A: CssPropertyValue, B: CssPropertyValue> CssPropertyValue for (A, B) {
     type Kind = (A::Kind, B::Kind);
 }
 
-/// Define a `ToCssValue` enum
+/// Define a css value enum
 macro_rules! define_enum {
     (
         $(#[$enum_meta:meta])*
