@@ -10,16 +10,20 @@ use std::borrow::Cow;
 use wasm_bindgen::JsCast;
 
 use crate::dom::element::{ElementRenderResult, MaybeStaticElement, generate_fallback_node};
+use crate::dom::html_elements::DeferredFunc;
 use crate::error_handling::{log_or_panic, log_or_panic_result};
 use crate::get_document;
 use crate::reactivity::context::{InnerCtx, RenderCtx};
 use crate::reactivity::core::{HookKey, ReactiveHook, RenderingState, UpdateResult};
 use crate::reactivity::{KeepAlive, State};
 
+/// A reactive closure that returns a element
+type ElementClosure<S> = Box<dyn Fn(RenderCtx<'_, '_, S>) -> MaybeStaticElement<S> + 'static>;
+
 /// Reactive hook for swapping out an entire DOM node.
 pub(crate) struct ReactiveNode<S: State> {
     /// The callback to produce nodes
-    callback: Box<dyn Fn(RenderCtx<S>) -> MaybeStaticElement<S>>,
+    callback: ElementClosure<S>,
     /// The current rendered node to replace
     target_node: web_sys::Node,
     /// Vector of various objects to be kept alive for the duration of the rendered content
@@ -54,7 +58,7 @@ impl<S: State> ReactiveNode<S> {
     /// Create a new `ReactiveNode` registering the initial dependencies and returning both the
     /// `HookKey` for it and the initial node (Which should be inserted in the dom)
     pub(crate) fn create_initial(
-        callback: Box<dyn Fn(RenderCtx<S>) -> MaybeStaticElement<S>>,
+        callback: ElementClosure<S>,
         ctx: &mut InnerCtx<S>,
     ) -> (HookKey, web_sys::Node) {
         let me = ctx.hooks.reserve_key();
@@ -131,14 +135,18 @@ pub(crate) enum SimpleReactiveResult<S: State, K> {
     /// Apply the value
     Apply(K),
     /// Call the inner reactive function
-    Call(Box<dyn FnOnce(&mut InnerCtx<S>, &mut RenderingState)>),
+    Call(DeferredFunc<S>),
 }
+
+/// The callback used by simple reactive
+type SimpleReactiveCallback<S, K> =
+    Box<dyn Fn(RenderCtx<'_, '_, S>, &web_sys::Element) -> SimpleReactiveResult<S, K> + 'static>;
 
 /// A common wrapper for simple reactive operations to deduplicate dependency tracking code
 pub(crate) struct SimpleReactive<S: State, K: ReactiveValue> {
     /// The callback to call, takes state and returns the needed data for the reactive
     /// transformation
-    callback: Box<dyn Fn(RenderCtx<S>, &web_sys::Element) -> SimpleReactiveResult<S, K>>,
+    callback: SimpleReactiveCallback<S, K>,
     /// The node to apply transformations to
     node: web_sys::Element,
     /// Vector of various objects to be kept alive for the duration of the rendered content
@@ -193,7 +201,7 @@ impl<S: State, K: ReactiveValue + 'static> SimpleReactive<S, K> {
     /// Creates a new simple reactive hook, applying the initial transformation.
     /// Returns a hookkey of the hook
     pub(crate) fn init_new(
-        callback: Box<dyn Fn(RenderCtx<S>, &web_sys::Element) -> SimpleReactiveResult<S, K>>,
+        callback: SimpleReactiveCallback<S, K>,
         node: web_sys::Element,
         ctx: &mut InnerCtx<S>,
     ) -> HookKey {

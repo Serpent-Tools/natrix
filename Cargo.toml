@@ -50,8 +50,6 @@ undocumented_unsafe_blocks = "deny"
 missing_docs_in_private_items = "warn"
 panic = { level = "deny", priority = 0 }
 
-type_complexity = "allow" # TODO: didnt seem too complex
-
 # niche stuff
 assertions_on_result_states = "warn"
 cargo_common_metadata = "warn"
