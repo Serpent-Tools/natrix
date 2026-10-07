@@ -20,24 +20,24 @@ macro_rules! strings {
     };
 }
 
-/// Call the given macro with every numeric type, the formatting crate to use, and whether its a
+/// Call the given macro with every numeric type, and whether its a
 /// integer or float.
 macro_rules! numerics {
     ($macro:ident) => {
-        $macro!(u8, itoa, Integer);
-        $macro!(u16, itoa, Integer);
-        $macro!(u32, itoa, Integer);
-        $macro!(u64, itoa, Integer);
-        $macro!(u128, itoa, Integer);
-        $macro!(usize, itoa, Integer);
-        $macro!(i8, itoa, Integer);
-        $macro!(i16, itoa, Integer);
-        $macro!(i32, itoa, Integer);
-        $macro!(i64, itoa, Integer);
-        $macro!(i128, itoa, Integer);
-        $macro!(isize, itoa, Integer);
-        $macro!(f32, ryu, Float);
-        $macro!(f64, ryu, Float);
+        $macro!(u8, Integer);
+        $macro!(u16, Integer);
+        $macro!(u32, Integer);
+        $macro!(u64, Integer);
+        $macro!(u128, Integer);
+        $macro!(usize, Integer);
+        $macro!(i8, Integer);
+        $macro!(i16, Integer);
+        $macro!(i32, Integer);
+        $macro!(i64, Integer);
+        $macro!(i128, Integer);
+        $macro!(isize, Integer);
+        $macro!(f32, Float);
+        $macro!(f64, Float);
     };
 }
 

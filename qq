@@ -1,0 +1,36 @@
+[1m[38;5;2m@[0m  [1m[38;5;13mm[38;5;8mzplzrso[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;14m2026-10-07 13:20:37[39m [38;5;12m2[38;5;8m0f71875[39m[0m
+│  [1m[38;5;3m(no description set)[39m[0m
+○  [1m[38;5;5mrv[0m[38;5;8mxmzruz[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2026-10-07 13:17:57[39m [1m[38;5;4m10[0m[38;5;8m21ae2c[39m
+│  move from itoa to stdlib
+○  [1m[38;5;5mnx[0m[38;5;8mrwllnt[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2026-10-07 13:06:53[39m [38;5;5mcode_debt_cleanup[39m [1m[38;5;4mb[0m[38;5;8m1ccb407[39m
+│  sweep stale docs and leftover code
+○  [1m[38;5;5mrm[0m[38;5;8muymtwo[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2026-10-07 12:19:47[39m [1m[38;5;4m09b[0m[38;5;8m58fea[39m
+│  document the shared WebValue infrastructure
+○  [1m[38;5;5mpw[0m[38;5;8mwrwzun[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2026-10-07 11:46:08[39m [1m[38;5;4m4[0m[38;5;8m8578757[39m
+│  rework duplicated trait patterns
+○  [1m[38;5;5mnv[0m[38;5;8msmumzz[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2026-09-29 19:18:31[39m [1m[38;5;4m8[0m[38;5;8m316ed99[39m
+│  cleanup dev server a bit
+○  [1m[38;5;5mvq[0m[38;5;8mtumlxn[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2026-09-29 18:47:51[39m [1m[38;5;4m9[0m[38;5;8m79faa44[39m
+│  make more strict lints pass
+[1m[38;5;14m◆[0m  [1m[38;5;5mk[0m[38;5;8muvyxrmn[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2026-09-29 01:12:18[39m [38;5;5mmain[39m [1m[38;5;4m6[0m[38;5;8mf844e78[39m
+│  add benchmarks
+[38;5;8m~[39m  [38;5;8m(elided revisions)[39m
+│ ○  [1m[38;5;5mx[0m[38;5;8muxkvzoo[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2025-10-28 18:45:05[39m [1m[38;5;4m04[0m[38;5;8m3d5281[39m
+│ │  [38;5;3m(no description set)[39m
+│ ○  [1m[38;5;5msv[0m[38;5;8mzprlvv[39m [38;5;3maritraghosh.zen23@gmail.com[39m [38;5;6m2025-10-16 08:15:27[39m [38;5;5maritracodes-69/main[39m [1m[38;5;4md[0m[38;5;8mfb2cdb7[39m
+├─╯  Implement SignalList with fine-grained reactivity (#30)
+[1m[38;5;14m◆[0m  [1m[38;5;5mvy[0m[38;5;8mnpxoyt[39m [38;5;3mshreyanshrewa@gmail.com[39m [38;5;6m2025-10-12 16:21:52[39m [1m[38;5;4m09e[0m[38;5;8mf5119[39m
+│  Update logo URL to use branding repository
+[38;5;8m~[39m  [38;5;8m(elided revisions)[39m
+│ ○  [1m[38;5;5msz[0m[38;5;8msrrkxt[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2026-04-02 15:16:53[39m [1m[38;5;4me[0m[38;5;8m1b23901[39m
+├─╯  [38;5;3m(no description set)[39m
+[1m[38;5;14m◆[0m  [1m[38;5;5mz[0m[38;5;8mnlmnkts[39m [38;5;3mnaimish82@proton.me[39m [38;5;6m2025-10-08 14:35:09[39m [1m[38;5;4m7[0m[38;5;8m507a6d5[39m
+│  Add 3 helper macros to handle colors and styles
+[38;5;8m~[39m  [38;5;8m(elided revisions)[39m
+│ ○  [1m[38;5;5ml[0m[38;5;8mklvwmtp[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2025-09-17 14:53:33[39m [38;5;5mci[39m [1m[38;5;4mf[0m[38;5;8m3b41f0a[39m
+│ │  setup caching
+│ ○  [1m[38;5;5mpv[0m[38;5;8mzkptoo[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2025-09-16 18:16:10[39m [1m[38;5;4m13[0m[38;5;8m8758a5[39m
+├─╯  add test github action
+[1m[38;5;14m◆[0m  [1m[38;5;5mu[0m[38;5;8mtvqyuyu[39m [38;5;3mvivax3794@protonmail.com[39m [38;5;6m2025-09-16 17:59:56[39m [1m[38;5;4m3[0m[38;5;8m85c745d[39m
+│  Fix colors constructors
+~

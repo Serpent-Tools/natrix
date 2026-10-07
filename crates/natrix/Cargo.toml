@@ -22,7 +22,6 @@ natrix_shared = { path = "../natrix_shared", version = "0.3.0" }
 
 # Core
 wasm-bindgen = { version = "0.2.101", features = ["enable-interning", "msrv", "std"], default-features = false }
-itoa = "1.0.15" # TODO: Replace with stdlib 
 ryu = "1.0.20"
 smallvec = "1.15.1"
 pastey = "0.1.1"
