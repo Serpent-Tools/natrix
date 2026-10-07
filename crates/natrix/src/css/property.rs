@@ -45,7 +45,7 @@ impl IntoCss for RuleCollection {
     }
 }
 
-/// A impletor for a property
+/// An implementor for a property
 pub trait Property {
     /// Return the property name
     fn name(self) -> &'static str;
@@ -223,7 +223,7 @@ macro_rules! support {
     };
 }
 
-/// Generate the support deglation without generating the test
+/// Generate the support declaration without generating the test
 /// Used for types that include generic kinds.
 macro_rules! support_no_test {
     ($prop:ident, $value:ty) => {

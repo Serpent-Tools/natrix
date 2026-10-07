@@ -1,7 +1,7 @@
 # State
 
 State in natrix usually refers to stuff implementing the [`State`](natrix::reactivity::State) trait.
-This trait is a **marker** trait, and is intended to be implemented by the `State` derive macro, which will insert bounds to assert that all your fields are also `State`.
+This trait is intended to be implemented by the `State` derive macro, which will insert bounds to assert that all your fields are also `State`, and implement [`.set`](natrix::prelude::State::set) by setting each field.
 
 ```rust
 # extern crate natrix;
@@ -25,7 +25,7 @@ struct App {
 ```
 
 ## Nesting state
-You can easialy nest state:
+You can easily nest state:
 ```rust
 # extern crate natrix;
 # use natrix::prelude::*;
@@ -65,7 +65,7 @@ Now you get fine-grained reactivity on the `book` fields.
 > This also includes overwriting any `State` struct directly, like `ctx.book = Book::...`
 
 ## `Signal`
-the [`Signal`](natrix::prelude::Signal) is the core reactive primitive in natrix, and implements read and write tracking on derefrencing.
+the [`Signal`](natrix::prelude::Signal) is the core reactive primitive in natrix, and implements read and write tracking on dereferencing.
 
 ```rust
 # extern crate natrix;

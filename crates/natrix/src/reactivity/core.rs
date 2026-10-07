@@ -31,7 +31,7 @@ type KeySlot = u16;
 
 /// The version in a slot, used to detect stale keys.
 /// This * `KeySlot` is the number of hooks we can have in the lifetime of the program
-/// (including deallocated ones). Currently around 4 million.
+/// (including deallocated ones). Currently around 4 billion.
 type KeyVersion = u16;
 
 /// The type used to store the global insertion order.
@@ -438,7 +438,7 @@ impl SignalDepList {
 
     /// Create an iterator over the current nodes by moving them in,
     /// and clear the leftover metadata.
-    /// This re-uses the hashmap allocation and allocates a new vec with the same capacity
+    /// This moves the map into the iterator and allocates a new map with the same capacity
     /// (since it's likely we will get close to the same amount of signals.)
     pub(super) fn create_iter_and_clear(&mut self) -> IterSignalList {
         let new_map = nohash::IntMap::with_capacity_and_hasher(

@@ -16,28 +16,28 @@ pub trait RawWebValue {
     type Arguments<'arg>;
 }
 
-/// A value convertible to the given `RawWebValue` using the values in `RawWebValue::Argument`.
+/// A value convertible to the given `RawWebValue` using the values in `RawWebValue::Arguments`.
 ///
-/// This is the trait backing the usage of `Option`, `Result`, strings and numercs as elements, classes,
+/// This is the trait backing the usage of `Option`, `Result`, strings and numerics as elements, classes,
 /// attributes, etc.
 pub trait WebValue<T: RawWebValue>: 'static {
     /// The "kind" of this value, this can be any arbitrary rust type and is used for compile time
     /// "unions" for certain users of this trait.
     ///
-    /// This type should be "forwarded" by composion such as `Option` and `Result`.
+    /// This type should be "forwarded" by composition such as `Option` and `Result`.
     /// Multiple "edge" types may target the same `Kind`, for example all strings have kind
-    /// `String`, or for example both `Rel` amd `Vec<Rel>` have kind `Rel`.
+    /// `String`, and all integer types have kind `Integer`.
     /// Generally one should prefer to minimize the amount of needed kinds, keeping to the amount
     /// needed to express the webs value semantics.
     /// For example if the only users of kinds `A` and `B` both support `A` and `B` they should most
     /// likely be collapsed into one kind, this should both speed up compile times and simplify
     /// trait bounds.
     ///
-    /// For example attributes support one "kind" of attribute value, sometimes `Int` or `Float`, or
-    /// sometimes specific values such as `EnterKeyHint`.
+    /// For example attributes support one "kind" of attribute value, sometimes `Integer` or `Float`, or
+    /// sometimes specific values such as `EnterkeyHint`.
     /// This lets those methods restrict the kinds of attributes they take while still letting
     /// composition (`Result`/`Option`) work as expected transparently
-    /// (which a normal `arg: EnterKeyHint` bound would not be able to support)
+    /// (which a normal `arg: EnterkeyHint` bound would not be able to support)
     ///
     /// See the `SupportedBy` trait for more details and examples of how to write bounds against
     /// this (you should not use direct `Kind = ...` bounds).
@@ -55,6 +55,7 @@ pub trait WebValue<T: RawWebValue>: 'static {
 /// * `String`: for `Kind = String`
 /// * `Integer`: for `Kind = Integer`
 /// * `Float`: for `Kind = Float`, and `Kind = Integer`
+/// * `Vec<T>`: for `Kind = Vec<T>`, and `Kind = T`, for the list attribute values in `dom::attributes`
 ///
 /// As well as for `(A, B)` where `A` and `B` implement the trait.
 ///

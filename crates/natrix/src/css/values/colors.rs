@@ -6,8 +6,7 @@ use crate::css::values::CssPropertyValue;
 /// A css color
 ///
 /// # Important
-/// All color methods and constructor use `debug_assert` to verify input ranges. (as css itself
-/// handles out of range colors fine in prod).
+/// Color constructors taking ranged inputs return `None` if any component is out of range.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[must_use]
 pub enum Color {
@@ -114,7 +113,7 @@ impl Color {
         Self::rgb(red, green, blue).with_alpha(alpha)
     }
 
-    /// Hsl with opaque alpha. Constructs directly.
+    /// Hsl with opaque alpha. Returns `None` if any component is out of range.
     #[inline]
     #[must_use]
     pub const fn hsl(hue: u16, saturation: u8, lightness: u8) -> Option<Self> {
@@ -147,7 +146,7 @@ impl Color {
         res.with_alpha(alpha)
     }
 
-    /// Oklch with opaque alpha. Constructs directly.
+    /// Oklch with opaque alpha. Returns `None` if any component is out of range.
     #[inline]
     #[must_use]
     pub const fn oklch(lightness: f32, chroma: f32, hue: f32) -> Option<Self> {

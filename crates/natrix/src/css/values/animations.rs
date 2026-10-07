@@ -21,7 +21,7 @@ super::define_css_shorthand! {
         {
             /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-duration>
             duration: Duration,
-            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-easing>
+            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timing-function>
             easing: EasingFunction,
             /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-delay>
             delay: Duration,
@@ -31,7 +31,7 @@ super::define_css_shorthand! {
             direction: AnimationDirection,
             /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-fill-mode>
             fill_mode: AnimationFillMode,
-            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-state>
+            /// <https://developer.mozilla.org/en-US/docs/Web/CSS/animation-play-state>
             state: AnimationState,
         }
     }

@@ -14,9 +14,7 @@ Please join the [Discord Server](https://discord.gg/Rptzjf3Nnm) where we can ans
 
 ## Development Setup
 
-
-We also have a [Nix](https://nixos.org/) flake to setup a working dev environment for natrix.
-
+We have a [Nix](https://nixos.org/) flake to setup a working dev environment for natrix.
 
 ## Development Workflow
 
@@ -38,11 +36,11 @@ In most cases make use of `log_or_panic_*` macros to panic on debug builds, but 
 Additionally natrix has important invariants in terms of its reactivity system that must not be invalidated.
 When implementing new features, try to build on existing functionality in order to minimize the risk of breaking these invariants.
 
-## Claim a issue
-* Before working on a issue please ask to be assigned to prevent duplicate work.
+## Claim an issue
+* Before working on an issue please ask to be assigned to prevent duplicate work.
 * For any issues that touch the public api please discuss the api design in the issue first.
 
 ## Pull Request Process
-1. If possible please try to run test suits before creating a PR.
+1. If possible please try to run test suites before creating a PR.
 2. Update documentation if necessary
 3. Add tests for new functionality

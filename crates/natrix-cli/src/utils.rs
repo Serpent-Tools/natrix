@@ -67,29 +67,6 @@ pub fn run_with_spinner(mut command: process::Command, spinner: ProgressBar) -> 
     }
 }
 
-/// Find if the specified feature is enabled for natrix
-#[expect(
-    dead_code,
-    reason = "No longer used, but might be useful in the future"
-)]
-pub fn is_feature_enabled(feature: &str, is_default: bool) -> Result<bool> {
-    let metadata = cargo_metadata::MetadataCommand::new().no_deps().exec()?;
-    let packages = metadata.workspace_default_packages();
-    let package = packages.first().ok_or(anyhow!("No package found"))?;
-    let natrix = package.dependencies.iter().find(|x| x.name == "natrix");
-
-    Ok(if let Some(natrix) = natrix {
-        if natrix.features.iter().any(|feat| feat == feature) {
-            true
-        } else {
-            is_default && natrix.uses_default_features
-        }
-    } else {
-        uwuln!("⚠️ Natrix not found in dependencies", yellow.bold);
-        is_default
-    })
-}
-
 /// Get the natrix version in use
 fn natrix_version() -> Result<semver::VersionReq> {
     let metadata = cargo_metadata::MetadataCommand::new().no_deps().exec()?;

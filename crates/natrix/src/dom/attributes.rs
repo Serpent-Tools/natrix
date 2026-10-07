@@ -133,7 +133,7 @@ macro_rules! define_attribute_enum {
 ///
 /// Attributes taking a list should bound on `SupportedBy<Vec<T>>`, which accepts both a `Vec<T>`
 /// and a single `T`.
-macro_rules! impl_to_attribute_for_vec {
+macro_rules! impl_web_value_for_vec {
     ($T:ty) => {
         impl SupportedBy<Vec<$T>> for Vec<$T> {}
         impl SupportedBy<Vec<$T>> for $T {}
@@ -169,7 +169,7 @@ macro_rules! impl_to_attribute_for_vec {
 
 /// Define a boolean attribute.
 /// This is a attribute thats effectively a bool.
-/// but the html spec in its infinite wisdom uses a unique set of enumerated values for
+/// but the html spec in its infinite wisdom uses a unique set of enumerated values for each one.
 macro_rules! define_bool_attribute {
     ($struct_name:ident, $true_str:tt, $false_str:tt) => {
         /// A boolean-like attribute.
@@ -298,7 +298,7 @@ define_attribute_enum! {
     }
 }
 
-impl_to_attribute_for_vec!(Rel);
+impl_web_value_for_vec!(Rel);
 
 define_attribute_enum! {
     #[derive(Default)]
@@ -341,7 +341,7 @@ define_attribute_enum! {
     }
 }
 
-impl_to_attribute_for_vec!(ControlsList);
+impl_web_value_for_vec!(ControlsList);
 
 define_attribute_enum! {
     #[derive(Default, Copy)]
@@ -484,7 +484,7 @@ define_attribute_enum! {
     }
 }
 
-impl_to_attribute_for_vec!(SandboxAllow);
+impl_web_value_for_vec!(SandboxAllow);
 
 define_attribute_enum! {
     #[derive(Default, Copy)]
@@ -502,7 +502,7 @@ define_attribute_enum! {
 define_attribute_enum! {
     #[derive(Default, Copy)]
     enum FetchPriority,
-    "fetchprioority",
+    "fetchpriority",
     "https://developer.mozilla.org/docs/Web/API/HTMLImageElement/fetchPriority",
     {
         High => "high",
@@ -527,7 +527,7 @@ define_attribute_enum! {
     }
 }
 
-impl_to_attribute_for_vec!(Id);
+impl_web_value_for_vec!(Id);
 
 /// Define a stringy enum with a `.render` method
 macro_rules! define_stringy_enum {

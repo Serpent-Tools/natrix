@@ -49,4 +49,4 @@ wasm-pack test --headless --chrome --firefox
 ```
 
 > [!NOTE]
-> From out experience the firefox webdriver is very slow to spin up, and even fails at semmingly random times.
+> From our experience the firefox webdriver is very slow to spin up, and even fails at seemingly random times.

@@ -49,7 +49,7 @@ pub(crate) enum MaybeDeferred<C: State> {
     Deferred(DeferredFunc<C>),
 }
 
-/// Indicates the given element is allowed to children
+/// Indicates the given element is allowed to have children
 /// This will catch errors such as:
 /// ```compile_fail
 /// # use natrix::prelude::*;
@@ -135,7 +135,7 @@ impl<C: State, T> HtmlElement<C, T> {
 
     /// Register a event handler for this element.
     ///
-    /// The event handler is a closure taking a mutable reference to `S<Self>`.
+    /// The event handler is a closure taking a `EventCtx<C>` and the js event.
     /// ```rust
     /// # use natrix::prelude::*;
     /// # #[derive(State)]
@@ -389,7 +389,7 @@ macro_rules! can_have_children {
     };
 }
 
-/// A macro to define `attr` helpers for the the various elements
+/// A macro to define `attr` helpers for the various elements
 macro_rules! attr_helpers {
     ($tag:ident => $($attr:ident($kind:path, $attr_name:literal $(, $alias:literal)?)),+) => {
         pastey::paste! {
@@ -549,7 +549,7 @@ attr_helpers!(blockquote => cite(String, "cite"));
 attr_helpers!(button =>
     command(attributes::Command, "command"), command_for(Id, "commandfor"),
     disabled(bool, "disabled"), form(Id, "form"), form_action(String, "formaction"),
-    form_encoding_type(attributes::EncodingType, "formenvtype"), form_method(attributes::FormMethod, "formmethod"),
+    form_encoding_type(attributes::EncodingType, "formenctype"), form_method(attributes::FormMethod, "formmethod"),
     form_no_validate(bool, "formnovalidate"), form_target(attributes::Target, "formtarget"),
     name(String, "name"), popover_target(Id, "popovertarget"),
     popover_target_action(attributes::PopoverAction, "popovertargetaction"), button_type(attributes::ButtonType, "type"), value(String, "value")
@@ -557,7 +557,7 @@ attr_helpers!(button =>
 attr_helpers!(canvas => height(web_value::Integer, "height"), width(web_value::Integer, "width"));
 attr_helpers!(col => span(web_value::Integer, "span"));
 attr_helpers!(colgroup => span(web_value::Integer, "span"));
-attr_helpers!(data => value(String, "data"));
+attr_helpers!(data => value(String, "value"));
 attr_helpers!(del => cite(String, "cite"));
 attr_helpers!(details => open(bool, "open"), name(String, "name"));
 attr_helpers!(dialog => open(bool, "open"));
@@ -647,7 +647,7 @@ attr_helpers!(textarea =>
 
 attr_helpers!(th =>
     abbreviated(String, "abbr"), column_span(web_value::Integer, "colspan"), headers(Vec<Id>, "headers"),
-    row_span(web_value::Integer, "row_span"), scope(attributes::TableHeadingScope, "scope")
+    row_span(web_value::Integer, "rowspan"), scope(attributes::TableHeadingScope, "scope")
 );
 
 // todo: <time>

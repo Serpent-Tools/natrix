@@ -5,7 +5,7 @@
 You have already seen `|ctx: RenderCtx<App>| ...` used in the varying examples in the book.
 Lets go into some more detail about what this does. Both `RenderCtx` and `EventCtx` implement `Deref` to your `App` (and `DerefMut` as well for `EventCtx`)
 
-> ![TIP]
+> [!TIP]
 > You can define type aliases for the two context types specialized on your type
 > ```rust
 > # extern crate natrix;
@@ -201,14 +201,14 @@ if let Some(value_guard) = ctx.guard_option(|ctx| field!(ctx.value).deref().proj
 # }}
 ```
 
-Here `value_guard` is **not** the actual value—it's a [lens](lens.md) that can be captured by child closures.
-Specifically `ctx.guard(...)` on a lens for `Option<T>` will return a `Option<impl Lens<..., T>>`.
+Here `value_guard` is **not** the actual value—it's a [getter](ref.md) that can be captured by child closures.
+Specifically `ctx.guard_option(...)` takes a getter returning `Option<Ref<T>>` and returns a `Option<impl Fn(Ref<App>) -> Ref<T>>`.
 
 ### How Guards Work
 
 Guards use [`ctx.watch`](natrix::prelude::RenderCtx::watch) internally to track when the condition changes (like `.is_some()`), but they provide a safe way to access the inner value without `.unwrap()`.
 
-When you use `ctx.get(value_guard)`, you get the inner value safely because the guard guarantees it exists.
+When you use `value_guard.call_read(&ctx)`, you get the inner value safely because the guard guarantees it exists.
 
 > [!NOTE]
 > Internally, guards do use `.unwrap()`, but it should never fail because the guard's existence guarantees the value is `Some`.

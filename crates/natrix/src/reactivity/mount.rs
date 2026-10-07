@@ -1,4 +1,4 @@
-//! State traits
+//! Mounting root elements into the dom.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -24,7 +24,7 @@ pub struct RenderResult<C: State> {
     keep_alive: Vec<KeepAlive>,
 }
 
-/// Mount the specified element at natrixses default location. and calls `setup_runtime`
+/// Mount the specified element at natrix's default location, setting up the panic hook, logging, and css.
 /// This is what should be used when building with the natrix cli.
 ///
 /// The render method is called lazily, for example its never called during css collection.
@@ -58,7 +58,7 @@ pub fn mount<C: State, E: Element<C>>(state: C, tree: impl FnOnce() -> E) {
     crate::css::do_css_setup();
 
     if cfg!(feature = "_internal_bundle") {
-        log::info!("bundle mode, aboring mount.");
+        log::info!("bundle mode, aborting mount.");
         return;
     }
 

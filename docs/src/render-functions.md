@@ -4,7 +4,7 @@ Render functions are the core of how you build UI in Natrix. They are functions 
 
 ## Basic Render Functions
 
-Every Natrix application starts with a render function. Elements are generic over the state type it will work with:
+Every Natrix application starts with a render function. Elements are generic over the state type they work with:
 
 ```rust,no_run
 # extern crate natrix;
@@ -138,7 +138,7 @@ fn render_app() -> impl Element<App> {
 ## Generic state access.
 What if you want a more reusable component, lets say a slider?
 For this rust just uses closures, kinda.
-Pure rust closures dont allow for combined read and mut paths, so natrix uses [`Ref`](natrix::access::Ref), see the [Getters Chapther](ref.md) for detailed docs on them.
+Pure rust closures dont allow for combined read and mut paths, so natrix uses [`Ref`](natrix::access::Ref), see the [Getters Chapter](ref.md) for detailed docs on them.
 [`Getter`](natrix::access::Getter) is a ergonomic "Alias Trait" for closures that take a `Ref` as the first argument, are cloneable, and are `'static`, all of which basically all closures in natrix need or might need at some point (and basically all closures will be), it saves you from having to write longer bounds, as well as needing to propagate a `Clone` bound after refactors as `Clone` is the default with `Getter`.  
 
 ```rust
@@ -168,7 +168,7 @@ fn render_app() -> impl Element<App> {
         .child(counter(|ctx| field!(ctx.second).deref()))
 }
 ```
-The amazing thing is that since the helper is still concrete (`impl Element<App>`), you can still access any field directly, if you said had a `theme` field, the `counter` function could access that directly without needing lenses.
+The amazing thing is that since the helper is still concrete (`impl Element<App>`), you can still access any field directly, if you said had a `theme` field, the `counter` function could access that directly without needing getters.
 
 ## Generic State Store
 If you are writing a component library you naturally wont know the state, then you can simply use a generic:
@@ -207,7 +207,7 @@ mod my_library {
             .text(|ctx: RenderCtx<S>| {
                 match ctx.get_language() {
                     "NO" => "Hallo ",
-                    "EN" | _ => "Greetins "
+                    "EN" | _ => "Greetings "
                 }
             })
             .text(move |mut ctx: RenderCtx<S>| name.call_read(&ctx).to_string())

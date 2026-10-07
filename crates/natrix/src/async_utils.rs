@@ -1,4 +1,4 @@
-//! Variosu async versions of js callback apis
+//! Various async versions of js callback apis
 #![cfg(feature = "async_utils")]
 use std::time::Duration;
 
