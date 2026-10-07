@@ -1426,7 +1426,6 @@ dependencies = [
  "futures-channel",
  "insta",
  "inventory",
- "itoa",
  "lightningcss",
  "log",
  "natrix_macros",

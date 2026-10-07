@@ -94,12 +94,25 @@ pub struct KindNumeric;
 
 /// generate css traits for a numeric
 macro_rules! impl_numerics {
-    ($t:ident, $fmt:ident, $name:ident) => {
+    ($t:ident,Float) => {
         impl IntoCss for $t {
             #[inline]
             fn into_css(self) -> String {
-                let mut buffer = $fmt::Buffer::new();
+                let mut buffer = ryu::Buffer::new();
                 let result = buffer.format(self);
+                result.to_string()
+            }
+        }
+        impl CssPropertyValue for $t {
+            type Kind = KindNumeric;
+        }
+    };
+    ($t:ident,Integer) => {
+        impl IntoCss for $t {
+            #[inline]
+            fn into_css(self) -> String {
+                let mut buffer = std::fmt::NumBuffer::new();
+                let result = self.format_into(&mut buffer);
                 result.to_string()
             }
         }

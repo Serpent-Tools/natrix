@@ -291,17 +291,33 @@ type_macros::strings!(webvalue_string);
 
 /// generate a `WebValue` implementation for a numeric type
 macro_rules! webvalue_numeric {
-    ($t:ident, $fmt:ident, $name:ident) => {
+    ($t:ident,Float) => {
         impl<T> WebValue<T> for $t
         where
             T: RawWebValue + From<::std::borrow::Cow<'static, str>>,
         {
-            type Kind = $name;
+            type Kind = Float;
 
             #[inline]
             fn resolve(self, _arguments: T::Arguments<'_>) -> T {
-                let mut buffer = $fmt::Buffer::new();
+                let mut buffer = ryu::Buffer::new();
                 let result = buffer.format(self);
+
+                T::from(::std::borrow::Cow::Owned(result.to_string()))
+            }
+        }
+    };
+    ($t:ident,Integer) => {
+        impl<T> WebValue<T> for $t
+        where
+            T: RawWebValue + From<::std::borrow::Cow<'static, str>>,
+        {
+            type Kind = Integer;
+
+            #[inline]
+            fn resolve(self, _arguments: T::Arguments<'_>) -> T {
+                let mut buffer = std::fmt::NumBuffer::new();
+                let result = self.format_into(&mut buffer);
 
                 T::from(::std::borrow::Cow::Owned(result.to_string()))
             }
