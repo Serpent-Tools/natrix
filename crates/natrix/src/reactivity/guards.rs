@@ -93,6 +93,10 @@ impl<S: State> RenderCtx<'_, '_, S> {
 
     /// Same as `guard_option`, but for `Result`
     #[expect(clippy::missing_errors_doc, reason = "This is transforming a Result")]
+    #[expect(
+        clippy::type_complexity,
+        reason = "uses `impl` so cant move the complex part into a alias"
+    )]
     #[inline]
     pub fn guard_result<F, T, E>(
         &mut self,
