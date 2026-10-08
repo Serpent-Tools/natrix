@@ -86,13 +86,13 @@ fn render() -> impl Element<App> {
 }
 ```
 
-## `ProjectableSignal`
-The [`ProjectableSignal`](natrix::reactivity::signal::ProjectableSignal) allows you to use fine-grained reactivity over certain wrapper types that dont implement the required tracking internally, such as most enums. When you have a `Ref` to the value you can use [`.project_signal`](natrix::access::Ref::project_signal) to get a projected `Ref` to the inner value.
+### `Project`-ing signals
+Signals support using [`Project`](natrix::access::Project) to access an inner value of a `Option`/`Result` without triggering re-renders for the entire inner value.
+They do this using the [`.project`](natrix::access::Ref::project) method on `Ref`, as well as the [`.project_mut`](natrix::prelude::Signal::project_mut) method on signals themselves.
 
 ```rust
 # extern crate natrix;
 use natrix::prelude::*;
-use natrix::reactivity::signal::ProjectableSignal;
 
 #[derive(State)]
 struct User {
@@ -102,21 +102,34 @@ struct User {
 
 #[derive(State)]
 struct App {
-    user: ProjectableSignal<Option<User>>
+    user: Signal<Option<User>>
 }
 
 fn render() -> impl Element<App> {
     e::div().child(|mut ctx: RenderCtx<App>| {
-        if let Some(guard) = ctx.guard_option(|ctx| field!(ctx.user).project_signal()) {
+        if let Some(guard) = ctx.guard_option(|ctx| field!(ctx.user).project()) {
             e::h1().text(move |ctx: RenderCtx<App>| guard.call_read(&ctx).name.clone()).render()
         } else {
             "...".render()
         }
     })
+    .on::<events::Click>(|mut ctx: EventCtx<App>, _| {
+        if let Some(user) = ctx.user.project_mut() {
+            *user.name = String::from("viv");
+        }
+    })
 }
 ```
 
-Modify the option itself using `.update`/`.set`, but use `.as_mut`/`.project_signal` to modify the inner value.
+You can modify the `Option` itself using normal signal dereferencing, and the inner value using the `project_mut` method.
+`as_mut` is also available on signals directly as an alias for `project_mut`.
 
-> [!NOTE]
-> Prefer `Signal<Option<NonState>>` over `ProjectableSignal<Option<Signal<NonState>>>`
+> [!IMPORTANT]
+> `project_mut` gives you a `&mut` to a `State`, so the [`.set`](natrix::prelude::State::set) rule applies:
+> `*user = User { ... }` will not trigger reactive updates.
+
+> [!WARNING]
+> Due to the `DerefMut` implementation on `Signal` it is possible to mutate the inner value in a way that triggers re-renders of the entire inner value's readers,
+> for example using [`Option::iter_mut`](std::option::Option::iter_mut) or [`Option::as_deref_mut`](std::option::Option::as_deref_mut).
+>
+> `DerefMut` is required for normal signal mutation, as well as allowing intentional usage of methods like [`.get_or_insert`](std::option::Option::get_or_insert).
