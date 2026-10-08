@@ -60,7 +60,6 @@ fn main() {
 mod driver_tests {
     use std::time::{Duration, Instant};
 
-    use thirtyfour::common::config::WebDriverConfig;
     use thirtyfour::{By, ChromiumLikeCapabilities, DesiredCapabilities, WebDriver};
     use tokio::time::sleep;
 
@@ -90,12 +89,7 @@ mod driver_tests {
         caps.add_arg("--disable-async-dns").unwrap();
         caps.add_arg("--disable-features=DnsOverHttps").unwrap();
 
-        let config = WebDriverConfig::builder()
-            // .reqwest_timeout(Duration::from_secs(5))
-            .build()
-            .expect("Config invalid");
-
-        let driver = WebDriver::new_with_config("http://chrome.local:8000", caps, config)
+        let driver = WebDriver::new("http://chrome.local:8000", caps)
             .await
             .expect("Failed to connect to chrome driver");
 

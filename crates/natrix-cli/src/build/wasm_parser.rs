@@ -38,7 +38,6 @@ pub fn parse_wasm_stream<R: Read>(mut reader: R) -> Result<WasmParseResult> {
                     break;
                 }
 
-                let hint = hint.try_into().unwrap_or(usize::MAX);
                 let target_size = hint.saturating_add(current_data_length);
 
                 if target_size > buffer.len() {
@@ -94,7 +93,7 @@ pub fn parse_wasm_stream<R: Read>(mut reader: R) -> Result<WasmParseResult> {
                 }
             }
             wasmparser::Payload::CodeSectionStart { range, .. } => {
-                code_section_offset = range.start as u64;
+                code_section_offset = range.start;
             }
             wasmparser::Payload::End(_) => break,
             _ => {}

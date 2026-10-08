@@ -18,7 +18,7 @@ log = { version = "0.4.28", features = ["max_level_trace"] }
 
 [dev-dependencies]
 # Testing
-thirtyfour = { version = "0.35.0", default-features = false, features = ["reqwest", "rustls-tls"] }
+thirtyfour = { version = "0.37.0", default-features = false, features = ["reqwest", "rustls"] }
 tokio = { version = "1.47.1", default-features = false, features = ["rt", "macros"] }
 
 [features]
