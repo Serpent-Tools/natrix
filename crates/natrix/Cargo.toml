@@ -23,8 +23,8 @@ natrix_shared = { path = "../natrix_shared", version = "0.3.0" }
 # Core
 wasm-bindgen = { version = "0.2.101", features = ["enable-interning", "msrv", "std"], default-features = false }
 ryu = "1.0.20"
-smallvec = "1.15.1"
-pastey = "0.1.1"
+smallvec = "1.15.2"
+pastey = "0.2.0"
 cfg-if = "1.0.3"
 nohash = "0.2.0"
 
@@ -69,7 +69,7 @@ static_assertions = "1.1.0"
 # Testing (Native only)
 lightningcss = { version = "1.0.0-alpha.67", default-features = false }
 proptest = "1.7.0"
-proptest-derive = "0.6.0"
+proptest-derive = "0.8.0"
 insta = "1.43.2"
 
 [package.metadata.cargo-udeps.ignore]

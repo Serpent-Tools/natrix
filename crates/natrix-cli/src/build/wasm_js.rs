@@ -5,6 +5,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::{fs, process};
 
+use oxc::ast::builder::AstBuilder;
 use oxc::span::GetSpan;
 
 use super::{BINDGEN_OUTPUT_NAME, MACRO_OUTPUT_DIR};
@@ -19,8 +20,8 @@ pub struct RenameMap(HashMap<Box<str>, Box<str>>);
 
 /// A visitor to rename ast nodes
 struct RenameVisitor<'allocator> {
-    /// The allocator to use
-    allocator: &'allocator oxc::allocator::Allocator,
+    /// The builder used to allocate new nodes
+    builder: AstBuilder<'allocator>,
     /// The resulting mapping.
     mapping: RenameMap,
 }
@@ -36,15 +37,9 @@ impl<'allocator> oxc::ast_visit::VisitMut<'allocator> for RenameVisitor<'allocat
         // said exports and imports, which as of writing seems to be the case.
         let current_name = it.property.name.to_string();
         if let Some(new_name) = self.mapping.0.get(&*current_name) {
-            let new_name = self.allocator.alloc_str(new_name);
-
-            let current_span = it.property.span;
-            let new_identifier = oxc::ast::AstBuilder {
-                allocator: self.allocator,
-            }
-            .identifier_name(current_span, new_name);
-
-            it.property = new_identifier;
+            let new_name = oxc::str::Ident::from_str_in(new_name, &self.builder);
+            it.property =
+                oxc::ast::ast::IdentifierName::new(it.property.span, new_name, &self.builder);
         }
     }
 
@@ -55,14 +50,12 @@ impl<'allocator> oxc::ast_visit::VisitMut<'allocator> for RenameVisitor<'allocat
             return;
         };
         if let Some(new_name) = self.mapping.0.get(&*current_name) {
-            let new_name = self.allocator.alloc_str(new_name);
-
-            let builder = oxc::ast::AstBuilder {
-                allocator: self.allocator,
-            };
-            let new_identifier = builder.identifier_name(it.span(), new_name);
-
-            *it = oxc::ast::ast::PropertyKey::StaticIdentifier(builder.alloc(new_identifier));
+            let new_name = oxc::str::Ident::from_str_in(new_name, &self.builder);
+            *it = oxc::ast::ast::PropertyKey::new_static_identifier(
+                it.span(),
+                new_name,
+                &self.builder,
+            );
         }
     }
 }
@@ -108,16 +101,17 @@ pub fn minimize_js(js_file: &PathBuf, mapping: RenameMap) -> Result<(), anyhow::
 
     let mut program = parser.parse().program;
     let mut visitor = RenameVisitor {
-        allocator: &allocator,
+        builder: AstBuilder::new(&allocator),
         mapping,
     };
     oxc::ast_visit::walk_mut::walk_program(&mut visitor, &mut program);
 
     let minifier = oxc::minifier::Minifier::new(oxc::minifier::MinifierOptions {
         mangle: Some(oxc::minifier::MangleOptions {
-            top_level: true,
+            top_level: Some(true),
             ..Default::default()
         }),
+        mangle_properties: None,
         compress: Some(oxc::minifier::CompressOptions {
             drop_console: false,
             drop_debugger: true,
