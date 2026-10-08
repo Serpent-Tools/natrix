@@ -33,6 +33,18 @@ def CargoDeny(crate) {
         > Exec("cargo deny check");
 }
 
+// --no-global is load bearing: without it the file is read as self hosted
+// config, where packageRules go unchecked and an invalid rule validates clean.
+renovate_config = Image("ghcr.io/renovatebot/renovate:43.214.1")
+    > WorkingDir("/app")
+    > With(FromHost("renovate.json"), "renovate.json")
+    > Exec("renovate-config-validator --strict --no-global renovate.json");
+
+export fast_lints = All(
+    rustfmt,
+    typos,
+    clippy_native
+);
 
 export all_lints = All(
     rustfmt, 
@@ -41,5 +53,6 @@ export all_lints = All(
     clippy_wasm, 
     minimal_versions,
     CargoDeny("natrix"),
-    CargoDeny("natrix-cli")
+    CargoDeny("natrix-cli"),
+    renovate_config
 );
