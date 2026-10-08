@@ -65,6 +65,10 @@ mod driver_tests {
 
     use crate::{BUTTON_ID, HELLO_ID, HELLO_TEXT, IMG_ID, PANIC_ID};
 
+    /// Callers must `quit().await` the returned driver. Letting it drop instead
+    /// deadlocks: the sync-Drop fallback blocks this test's current-thread
+    /// runtime while issuing `DELETE /session` over a client whose IO is driven
+    /// by that same runtime, so teardown only unblocks on `request_timeout`.
     async fn create_client() -> WebDriver {
         let url = if cfg!(feature = "build_test") {
             "http://page.local/dist/"
@@ -89,7 +93,9 @@ mod driver_tests {
         caps.add_arg("--disable-async-dns").unwrap();
         caps.add_arg("--disable-features=DnsOverHttps").unwrap();
 
-        let driver = WebDriver::new("http://chrome.local:8000", caps)
+        let driver = WebDriver::builder("http://chrome.local:8000", caps)
+            .request_timeout(Duration::from_secs(30))
+            .connect()
             .await
             .expect("Failed to connect to chrome driver");
 
@@ -133,6 +139,7 @@ mod driver_tests {
         let client = create_client().await;
         let element = client.find(By::Id(HELLO_ID.0)).await.unwrap();
         let text = element.text().await.unwrap();
+        let _ = client.quit().await;
         assert_eq!(text, HELLO_TEXT);
     }
 
@@ -142,6 +149,7 @@ mod driver_tests {
         let client = create_client().await;
         let element = client.find(By::Id(HELLO_ID.0)).await.unwrap();
         let text = element.css_value("background-color").await.unwrap();
+        let _ = client.quit().await;
         assert_eq!(text, "rgba(1, 2, 3, 1)");
     }
 
@@ -153,6 +161,7 @@ mod driver_tests {
             .await
             .unwrap();
         let text = element.text().await.unwrap();
+        let _ = client.quit().await;
         assert_eq!(text, integration_tests_dependency::DEP_TEXT);
     }
 
@@ -176,6 +185,8 @@ mod driver_tests {
             text, "1",
             "Panic should have prevented further rust execution"
         );
+
+        let _ = client.quit().await;
     }
 
     #[tokio::test]
@@ -184,6 +195,7 @@ mod driver_tests {
         let element = client.find(By::Id(IMG_ID.0)).await.unwrap();
         let rect = element.rect().await.unwrap();
         let width = rect.width;
+        let _ = client.quit().await;
 
         assert!(width >= 100.0, "Img width too small {width}");
     }
@@ -227,6 +239,8 @@ mod driver_tests {
                 panic!("Reloading took too long");
             }
         }
+
+        let _ = client.quit().await;
     }
 }
 
