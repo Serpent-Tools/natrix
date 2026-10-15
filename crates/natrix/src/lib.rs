@@ -1,7 +1,7 @@
 #![doc = include_str!(concat!("../", std::env!("CARGO_PKG_README")))]
 #![cfg_attr(not(feature = "_internal_no_ssg"), forbid(unsafe_code))]
 
-pub mod access;
+pub mod lens;
 
 pub mod async_utils;
 pub mod css;
@@ -60,7 +60,6 @@ pub(crate) fn get_window() -> web_sys::Window {
 pub mod prelude {
     pub use natrix_macros::State;
 
-    pub use super::access::{Downgrade, Getter, Project, Ref, RefClosure};
     pub use super::css::property::Variable;
     pub use super::css::selectors::{
         Class,
@@ -73,7 +72,6 @@ pub mod prelude {
     pub use super::reactivity::State;
     pub use super::reactivity::context::{EventCtx, RenderCtx};
     pub use super::reactivity::signal::Signal;
-    pub use super::{field, with};
 }
 
 pub use dom::Element;
