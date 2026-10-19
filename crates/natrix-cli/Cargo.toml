@@ -25,7 +25,7 @@ owo-colors = { version = "4.2.2", default-features = false, features=["supports-
 anyhow = { version = "1.0.99", default-features = false }
 
 # Build Tools
-oxc = { version = "0.152.0", default-features = false, features = ["minifier", "codegen", "ast_visit"] }
+oxc = { version = "0.153.0", default-features = false, features = ["minifier", "codegen", "ast_visit"] }
 lightningcss = { version = "1.0.0-alpha.67", default-features = false, features = ["visitor"] }
 wasmparser = { version = "0.261.0", features = [], default-features = false }
 rustc_version = "0.4.1"
