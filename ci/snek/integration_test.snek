@@ -59,7 +59,7 @@ def IntegrationTest(page, flags) {
 }
     
 export all_integration = All(
-    ProjectGen(core::wasm > Exec("rustup default stable"), " --stable"),
+    ProjectGen(core::wasm, " --stable"),
     ProjectGen(core::wasm, ""),
     IntegrationTest(NatrixDev("dev"), ""),
     IntegrationTest(NatrixDev("release"), ""),
