@@ -69,7 +69,7 @@ static_assertions = "1.1.0"
 # Testing (Native only)
 lightningcss = { version = "1.0.0-alpha.67", default-features = false }
 proptest = "1.7.0"
-proptest-derive = "0.8.0"
+proptest-derive = "0.9.0"
 insta = "1.43.2"
 
 [package.metadata.cargo-udeps.ignore]
