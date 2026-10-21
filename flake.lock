@@ -8,11 +8,11 @@
         "rust-analyzer-src": "rust-analyzer-src"
       },
       "locked": {
-        "lastModified": 1790420830,
-        "narHash": "sha256-z3OT9zp96drkDc2qZlC9WRXMpKaysdMDJiwWpLVeiOU=",
+        "lastModified": 1792582139,
+        "narHash": "sha256-pEsYM6FAbqTHx9PxvRNOC6m43MR9oqEEpSW2TveD2U0=",
         "owner": "nix-community",
         "repo": "fenix",
-        "rev": "5f7e7d793cb2553410f857554de86f277ebe2f71",
+        "rev": "02d6357e9d59c4626a82b27371ae6e90508839e5",
         "type": "github"
       },
       "original": {
@@ -23,11 +23,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1790323409,
-        "narHash": "sha256-VVTPf+Hyd5ebpjBMHmrLMSBIeW6ls48Bqtosj7CNKLA=",
+        "lastModified": 1792502884,
+        "narHash": "sha256-IoNisKcGbUjdd45qCqywGMCYmZ5EnkxezvLII0FWwNA=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "e94cb152ed51bd6e24eb4a41f1460252beb52cd2",
+        "rev": "02c087f3fe673c9e317f206a627cb6b910336dbe",
         "type": "github"
       },
       "original": {
@@ -47,11 +47,11 @@
     "rust-analyzer-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1790305964,
-        "narHash": "sha256-2qzlUJB59Rq0XIjVGf42XqqaTwXoRLIFX4S7sW1t2iw=",
+        "lastModified": 1792506877,
+        "narHash": "sha256-dqi+R9BPtkJ5Y7Kfcz5iCBytFGhfIdElzy3Ii/DcKSE=",
         "owner": "rust-lang",
         "repo": "rust-analyzer",
-        "rev": "1ad44dc58e65304b594063e70c144ecb58643671",
+        "rev": "6c1fc437b550edf709a3ca55a2a8f809f3d3fcea",
         "type": "github"
       },
       "original": {
@@ -68,16 +68,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1790617751,
-        "narHash": "sha256-ffctC5Ptu02y2qDlSPHG1tCYlRoPSmc88szA+CNLuWA=",
+        "lastModified": 1792590385,
+        "narHash": "sha256-ghSZZIAmaiX4hWzt075Lk1jwcxikVWBQjXzKOTZ02e8=",
         "owner": "Serpent-Tools",
         "repo": "serpentine",
-        "rev": "576003e54f13d1032141e2337c9814479c911ff2",
+        "rev": "6e21c52fa88f76cc538a44d7ef1f5da05dee7f10",
         "type": "github"
       },
       "original": {
         "owner": "Serpent-Tools",
-        "ref": "v1.0.2",
+        "ref": "v1.0.3",
         "repo": "serpentine",
         "type": "github"
       }
