@@ -69,7 +69,8 @@ pub mod prelude {
         IntoFinalizedSelector,
     };
     pub use super::dom::{Element, events, html_elements as e};
-    pub use super::lens::{Lens, Optic};
+    pub use super::field;
+    pub use super::lens::{Lens, Optic, root};
     pub use super::reactivity::State;
     pub use super::reactivity::context::{EventCtx, RenderCtx};
     pub use super::reactivity::signal::Signal;
