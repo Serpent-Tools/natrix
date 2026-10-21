@@ -23,8 +23,8 @@ fn render_test_option() -> impl Element<TestOption> {
                 }),
         )
         .child(|mut ctx: RenderCtx<TestOption>| {
-            if let Some(value_guard) = ctx.guard_option(|ctx| field!(ctx.value).deref().project()) {
-                e::div().text(move |mut ctx: RenderCtx<TestOption>| *value_guard.call_read(&ctx))
+            if let Some(value_guard) = ctx.guard(field!(TestOption, .value).deref()) {
+                e::div().text(move |mut ctx: RenderCtx<TestOption>| *value_guard.get(&ctx))
             } else {
                 e::div().text("NO VALUE")
             }
@@ -77,11 +77,13 @@ fn render_test_result() -> impl Element<TestResult> {
                 }),
         )
         .child(|mut ctx: RenderCtx<TestResult>| {
-            match ctx.guard_result(|ctx| field!(ctx.value).deref().project()) {
-                Ok(value_guard) => e::div()
-                    .text(move |mut ctx: RenderCtx<TestResult>| *value_guard.call_read(&ctx)),
-                Err(error_guard) => e::div()
-                    .text(move |mut ctx: RenderCtx<TestResult>| *error_guard.call_read(&ctx)),
+            match ctx.guard(field!(TestResult, .value).deref()) {
+                Ok(value_guard) => {
+                    e::div().text(move |mut ctx: RenderCtx<TestResult>| *value_guard.get(&ctx))
+                }
+                Err(error_guard) => {
+                    e::div().text(move |mut ctx: RenderCtx<TestResult>| *error_guard.get(&ctx))
+                }
             }
             .id(TEXT)
         })
@@ -130,14 +132,12 @@ fn render_nested() -> impl Element<Nested> {
                 }),
         )
         .child(|mut ctx: RenderCtx<Nested>| {
-            if let Some(value_guard) = ctx.guard_option(|ctx| field!(ctx.value).deref().project()) {
+            if let Some(value_guard) = ctx.guard(field!(Nested, .value).deref()) {
                 e::div().text(move |mut ctx: RenderCtx<Nested>| {
-                    if let Some(inner_guard) =
-                        ctx.guard_option(with!(move value_guard |ctx| value_guard(ctx).project()))
-                    {
+                    if let Some(inner_guard) = ctx.guard(value_guard) {
                         e::div()
                             .id(TEXT)
-                            .text(move |mut ctx: RenderCtx<Nested>| *inner_guard.call_read(&ctx))
+                            .text(move |mut ctx: RenderCtx<Nested>| *inner_guard.get(&ctx))
                     } else {
                         e::div().text("NO VALUE INNER").id(TEXT)
                     }
