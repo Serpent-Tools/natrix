@@ -109,7 +109,7 @@ pub trait Optic<S: Shape>: Copy + Sized + 'static {
 /// Internal type used for `.then`, that chains two optics together.
 #[must_use = "Lenses do nothing if not called"]
 #[derive(Debug, Clone, Copy)]
-struct Chain<L, R>(L, R);
+pub struct Chain<L, R>(pub L, pub R);
 
 impl<S, L, R> Optic<S> for Chain<L, R>
 where
@@ -171,7 +171,7 @@ pub fn root<T: Shape + 'static>() -> impl Optic<T, Output = T> {
 
 /// Internal type for `.deref` that calls `.deref`/`.deref_mut`.
 #[derive(Clone, Copy, Debug)]
-struct DerefOptic;
+pub struct DerefOptic;
 
 impl<T: Deref + DerefMut + 'static> Optic<&'static T> for DerefOptic {
     type Output = &'static T::Target;
@@ -363,7 +363,7 @@ impl<O: 'static, E: 'static> Projectable for Result<O, E> {
 
 /// Optic for using `Projectable`
 #[derive(Debug, Clone, Copy)]
-struct ProjectOptic;
+pub struct ProjectOptic;
 
 impl<T> Optic<&'static T> for ProjectOptic
 where
@@ -389,7 +389,6 @@ where
 // TODO: Option/Result handling
 
 // TODO: Proejctable signals
-// TODO: guards
 // TODO: ... async
 
 #[cfg(test)]
