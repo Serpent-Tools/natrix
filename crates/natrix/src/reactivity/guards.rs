@@ -65,6 +65,14 @@ impl<T: Shape> Optic<Option<T>> for UnwrapGuard {
     ) -> <Self::Output as Shape>::Mut<'write> {
         value.expect("None passed to `UnwrapGuard`")
     }
+
+    #[inline]
+    fn try_get<'write>(
+        &self,
+        value: <Option<T> as Shape>::Mut<'write>,
+    ) -> Option<<Self::Output as Shape>::Mut<'write>> {
+        value
+    }
 }
 
 impl<S: 'static, T: Shape + 'static> Guardable<S> for Option<T> {
@@ -118,6 +126,14 @@ impl<O: Shape, E: Shape> Optic<Result<O, E>> for OkGuard {
     ) -> <Self::Output as Shape>::Mut<'write> {
         value.ok().expect("Err passed to OkGuard")
     }
+
+    #[inline]
+    fn try_get<'write>(
+        &self,
+        value: <Result<O, E> as Shape>::Mut<'write>,
+    ) -> Option<<Self::Output as Shape>::Mut<'write>> {
+        value.ok()
+    }
 }
 
 impl<O: Shape, E: Shape> Optic<Result<O, E>> for ErrGuard {
@@ -137,6 +153,14 @@ impl<O: Shape, E: Shape> Optic<Result<O, E>> for ErrGuard {
         value: <Result<O, E> as Shape>::Mut<'write>,
     ) -> <Self::Output as Shape>::Mut<'write> {
         value.err().expect("Ok passed to ErrGuard")
+    }
+
+    #[inline]
+    fn try_get<'write>(
+        &self,
+        value: <Result<O, E> as Shape>::Mut<'write>,
+    ) -> Option<<Self::Output as Shape>::Mut<'write>> {
+        value.err()
     }
 }
 
