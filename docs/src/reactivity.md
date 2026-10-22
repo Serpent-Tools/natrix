@@ -193,22 +193,22 @@ Guards provide an elegant solution to this exact problem:
 # struct App {value: Signal<Option<u32>>}
 # fn render() -> impl Element<App> {
 # |mut ctx: RenderCtx<App>| {
-if let Some(value_guard) = ctx.guard_option(|ctx| field!(ctx.value).deref().project()) {
-    e::div().text(move |mut ctx: RenderCtx<App>| *value_guard.call_read(&ctx))
+if let Some(value_guard) = ctx.guard(field!(App, .value).deref()) {
+    e::div().text(move |mut ctx: RenderCtx<App>| *value_guard.get(&ctx))
 } else {
     e::div().text("Is none")
 }
 # }}
 ```
 
-Here `value_guard` is **not** the actual value—it's a [getter](ref.md) that can be captured by child closures.
-Specifically `ctx.guard_option(...)` takes a getter returning `Option<Ref<T>>` and returns a `Option<impl Fn(Ref<App>) -> Ref<T>>`.
+Here `value_guard` is **not** the actual value—it's an [optic](lens.md) that can be captured by child closures.
+Specifically [`ctx.guard(...)`](natrix::prelude::RenderCtx::guard) takes an optic to a `&Option<T>` and returns an `Option` containing an optic to `&T`.
 
 ### How Guards Work
 
 Guards use [`ctx.watch`](natrix::prelude::RenderCtx::watch) internally to track when the condition changes (like `.is_some()`), but they provide a safe way to access the inner value without `.unwrap()`.
 
-When you use `value_guard.call_read(&ctx)`, you get the inner value safely because the guard guarantees it exists.
+When you use `value_guard.get(&ctx)`, you get the inner value safely because the guard guarantees it exists.
 
 > [!NOTE]
 > Internally, guards do use `.unwrap()`, but it should never fail because the guard's existence guarantees the value is `Some`.
@@ -224,14 +224,14 @@ Guards also work with `Result<T, E>` types:
 # struct App {operation: Signal<Result<u32, String>>}
 # fn render() -> impl Element<App> {
 # |mut ctx: RenderCtx<App>| {
-match ctx.guard_result(|ctx| field!(ctx.operation).deref().project()) {
+match ctx.guard(field!(App, .operation).deref()) {
     Ok(success_guard) => {
         e::div()
-            .text(move |mut ctx: RenderCtx<App>| *success_guard.call_read(&ctx))
+            .text(move |mut ctx: RenderCtx<App>| *success_guard.get(&ctx))
     }
     Err(error_guard) => {
         e::div()
-            .text(move |mut ctx: RenderCtx<App>| error_guard.call_read(&ctx).clone())
+            .text(move |mut ctx: RenderCtx<App>| error_guard.get(&ctx).clone())
     }
 }
 # }}

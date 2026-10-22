@@ -8,12 +8,12 @@ use crate::lens::{Chain, Optic, ProjectOptic, Projectable, Shape};
 use crate::reactivity::State;
 use crate::reactivity::context::RenderCtx;
 
-/// Trait that powers the `ctx.guard` functionality, this can be implented for your own enums to
+/// Trait that powers the `ctx.guard` functionality, this can be implemented for your own enums to
 /// provide them with guard functionality.
 ///
-/// The `S` trait paramter is the state type, while most enums can and should be generic over the
-/// state we require the paramter for type checking reasons. One nice benfit of it is that it lets
-/// you implement guards for external types if you specifically implment it for your state struct.
+/// The `S` trait parameter is the state type, while most enums can and should be generic over the
+/// state we require the parameter for type checking reasons. One nice benefit of it is that it lets
+/// you implement guards for external types if you specifically implement it for your state struct.
 pub trait Guardable<S: 'static>: Shape {
     /// The value to be watched by `ctx.watch`, this will be given to `guard` and is expected to
     /// represent the values variant.
@@ -23,7 +23,7 @@ pub trait Guardable<S: 'static>: Shape {
     /// containing optics. for generic enums this is easy enough to do, basically think of this as a
     /// projection from `Optic<Output = Option<T>>` into `Option<Optic<Output = T>>`. For custom
     /// enums you might need a companion enum instead, `Optic<Output = MyEnum>` -> `MyEnumGuards`
-    /// (contaning optics to fields internally.)
+    /// (containing optics to fields internally.)
     type GuardResult<O>
     where
         O: Optic<&'static S, Output = Self>;

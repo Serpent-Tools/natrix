@@ -80,7 +80,7 @@ impl<T: Default> Default for Signal<T> {
     }
 }
 
-/// Trait for `Project` type whose target contains a state.
+/// Trait for `Projectable` types whose target contains a state.
 /// Such as `Option<Signal<...>>`
 pub trait ProjectIntoState: Projectable {}
 impl<T: State> ProjectIntoState for Option<T> {}
@@ -89,8 +89,12 @@ impl<T: State, E: State> ProjectIntoState for Result<T, E> {}
 impl<T: ProjectIntoState> Signal<T> {
     /// Alias for `project_mut` for intentionally shadowing `as_mut` on `T`.
     ///
-    /// Prefer useing `project_mut` instead.
+    /// Prefer using `project_mut` instead.
     #[inline]
+    #[expect(
+        clippy::deprecated_attributes_without_since,
+        reason = "This shadows `as_mut` on `T` rather than being deprecated by a natrix release."
+    )]
     #[deprecated(note = "Prefer using `project_mut` instead.")]
     pub fn as_mut(&mut self) -> <T::Result as Shape>::Mut<'_> {
         self.project_mut()
@@ -100,7 +104,7 @@ impl<T: ProjectIntoState> Signal<T> {
 impl<T: ProjectIntoState> Projectable for Signal<T> {
     type Result = T::Result;
 
-    /// Project a `&mut Signal<Option<T>>` (or other `Project` type) into a `Option<&mut T>`,
+    /// Project a `&mut Signal<Option<T>>` (or other `Projectable` type) into an `Option<&mut T>`,
     /// without triggering re-renders of subscribers to this `Signal`.
     /// This is mainly useful with your own state types.
     ///
@@ -148,11 +152,10 @@ impl<T: ProjectIntoState> Projectable for Signal<T> {
     /// ```
     /// Now only dependencies of `book.cost` will re-run.
     ///
-    /// This method requires that the signal type (in addition to the normal `Project`) implements
-    /// `ProjectIntoState`, which asserts that the project target is also a `State` type (sadly rust
-    /// does not give a way to easily express this restriction against just `Project`)
-    ///
-    /// The [`Project`] implementation on `Signal` behaves the same way in its mut path.
+    /// This method requires that the signal type (in addition to the normal `Projectable`)
+    /// implements `ProjectIntoState`, which asserts that the project target is also a `State` type
+    /// (sadly rust does not give a way to easily express this restriction against just
+    /// `Projectable`)
     #[inline]
     fn project_mut(&mut self) -> <T::Result as Shape>::Mut<'_> {
         self.data.project_mut()
