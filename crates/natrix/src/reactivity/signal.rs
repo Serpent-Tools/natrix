@@ -89,8 +89,12 @@ impl<T: State, E: State> ProjectIntoState for Result<T, E> {}
 impl<T: ProjectIntoState> Signal<T> {
     /// Alias for `project_mut` for intentionally shadowing `as_mut` on `T`.
     ///
-    /// Prefer useing `project_mut` instead.
+    /// Prefer using `project_mut` instead.
     #[inline]
+    #[expect(
+        clippy::deprecated_attributes_without_since,
+        reason = "This shadows `as_mut` on `T` rather than being deprecated by a natrix release."
+    )]
     #[deprecated(note = "Prefer using `project_mut` instead.")]
     pub fn as_mut(&mut self) -> <T::Result as Shape>::Mut<'_> {
         self.project_mut()

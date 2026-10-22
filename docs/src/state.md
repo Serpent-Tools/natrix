@@ -86,9 +86,10 @@ fn render() -> impl Element<App> {
 }
 ```
 
-### `Project`-ing signals
-Signals support using [`Project`](natrix::access::Project) to access an inner value of a `Option`/`Result` without triggering re-renders for the entire inner value.
-They do this using the [`.project`](natrix::access::Ref::project) method on `Ref`, as well as the [`.project_mut`](natrix::prelude::Signal::project_mut) method on signals themselves.
+### `project`-ing signals
+Signals containing a `State` implement [`Projectable`](natrix::lens::Projectable), which allows accessing an inner value of a `Option`/`Result` without triggering re-renders for the entire inner value.
+This can be used via the [`.project`](natrix::lens::Lens::project) method on optics, as well as the [`.project_mut`](natrix::lens::Projectable::project_mut) method on signals themselves.
+Guards also make use of this, so `ctx.guard` works directly on a `Signal<Option<User>>` (where `User` is a `State`), as seen below.
 
 ```rust
 # extern crate natrix;
@@ -107,8 +108,8 @@ struct App {
 
 fn render() -> impl Element<App> {
     e::div().child(|mut ctx: RenderCtx<App>| {
-        if let Some(guard) = ctx.guard_option(|ctx| field!(ctx.user).project()) {
-            e::h1().text(move |ctx: RenderCtx<App>| guard.call_read(&ctx).name.clone()).render()
+        if let Some(guard) = ctx.guard(field!(App, .user)) {
+            e::h1().text(move |ctx: RenderCtx<App>| guard.get(&ctx).name.clone()).render()
         } else {
             "...".render()
         }

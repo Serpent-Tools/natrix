@@ -27,7 +27,7 @@ use std::ops::{Deref, DerefMut};
 /// `&'val &T` and `&'val mut &T`.
 ///
 /// While there is no compile time enforcement that the `Read` and `Mut` associated types are the
-/// intended forms, a lot of the other optic signautres will not be compatiable with once where it
+/// intended forms, a lot of the other optic signatures will not be compatible with once where it
 /// isnt.
 pub trait Shape {
     /// The "read" variant of this shape specialized by the given lifetime, this should include `&'read ...` references.
@@ -53,7 +53,7 @@ impl<O: Shape, E: Shape> Shape for Result<O, E> {
 
 /// An optic is a generalization of lenses, prisms, etc.
 ///
-/// It can be tought of as a pair of closures, one for each variant of a `Shape`, While strictly
+/// It can be thought of as a pair of closures, one for each variant of a `Shape`, While strictly
 /// speaking these can be used for many different kinds of transformations the most common and
 /// indented usecase is as getters into `State` providing both read and write access *to the same
 /// location*.
@@ -84,7 +84,7 @@ pub trait Optic<S: Shape>: Copy + Sized + 'static {
     fn get_mut<'write>(&self, value: S::Mut<'write>) -> <Self::Output as Shape>::Mut<'write>;
 
     /// Execute the `Mut` path of this optic, but return `None` if any part of the chain, mainly
-    /// guards, fail. This should be used for async or any other situation where a optic is sotred
+    /// guards, fail. This should be used for async or any other situation where a optic is sorted
     /// outside the normal reactivity tree.
     #[must_use]
     #[inline]
@@ -189,7 +189,7 @@ impl<T: Shape + 'static> Optic<T> for Root<T> {
     }
 }
 
-/// Return a "noop" optic that just returns its input unchange, specifically the type specificied in
+/// Return a "noop" optic that just returns its input unchange, specifically the type specified in
 /// this types generic. This is useful for starting the chain of a optic by giving you something to
 /// call the chaining trait methods on such as `.deref()`.
 #[inline]
@@ -201,7 +201,7 @@ pub fn root<T: Shape + 'static>() -> impl Optic<T, Output = T> {
 #[derive(Clone, Copy, Debug)]
 pub struct DerefOptic;
 
-impl<T: Deref + DerefMut + 'static> Optic<&'static T> for DerefOptic {
+impl<T: ?Sized + Deref + DerefMut + 'static> Optic<&'static T> for DerefOptic {
     type Output = &'static T::Target;
 
     #[inline]
@@ -230,7 +230,7 @@ pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
     /// The target type of the reference, i.e the `T` in `&T`.
     ///
     /// In other words the output of the optic is `&Target`.
-    type Target: 'static;
+    type Target: ?Sized + 'static;
 
     /// Call `.deref`/`.deref_mut` on the value, for example turning `&String` into `&str`, or
     /// `&Signal<i32>` into `&i32` etc.
@@ -251,7 +251,7 @@ pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
     ///
     /// WARN: This requires you to manually ophold the optic "same path" invariant.
     #[inline]
-    fn ref_map<R: 'static>(
+    fn ref_map<R: ?Sized + 'static>(
         self,
         read: impl for<'val> Fn(&'val Self::Target) -> &'val R + Copy + 'static,
         write: impl for<'val> Fn(&'val mut Self::Target) -> &'val mut R + Copy + 'static,
@@ -281,7 +281,7 @@ pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
 impl<S, T, O> Lens<S> for O
 where
     S: Shape,
-    T: 'static,
+    T: ?Sized + 'static,
     O: Optic<S, Output = &'static T>,
 {
     type Target = T;
@@ -299,7 +299,7 @@ impl<FRead, FMut> ReferenceMap<FRead, FMut> {
     ///
     /// This method exists as its used by the `field!` macro.
     #[inline]
-    pub fn new<Input, Output>(read: FRead, write: FMut) -> Self
+    pub fn new<Input: ?Sized, Output: ?Sized>(read: FRead, write: FMut) -> Self
     where
         FRead: for<'val> Fn(&'val Input) -> &'val Output,
         FMut: for<'val> Fn(&'val mut Input) -> &'val mut Output,
@@ -308,7 +308,7 @@ impl<FRead, FMut> ReferenceMap<FRead, FMut> {
     }
 }
 
-impl<Input: 'static, Output: 'static, FRead, FMut> Optic<&'static Input>
+impl<Input: ?Sized + 'static, Output: ?Sized + 'static, FRead, FMut> Optic<&'static Input>
     for ReferenceMap<FRead, FMut>
 where
     FRead: for<'val> Fn(&'val Input) -> &'val Output + Copy + 'static,
@@ -333,7 +333,7 @@ where
     }
 }
 
-/// Create a `Optic` that acccess the given field of the given type.
+/// Create a `Optic` that access the given field of the given type.
 /// This optic can then be passed to `.then`.
 ///
 /// The macro is first passed the type, and then the field path (with a leading `.`).
@@ -352,7 +352,7 @@ macro_rules! field {
 /// This basically represents a "type-native" `Optic<&Self, Output = ...>`, which can be applied
 /// using `Optic::project`.
 pub trait Projectable {
-    /// The output of the projection, analogus to `Optic::Output`
+    /// The output of the projection, analogous to `Optic::Output`
     type Result: Shape;
 
     /// The `Read`/`Optic::get` path of this projection.
@@ -396,7 +396,7 @@ impl<O: 'static, E: 'static> Projectable for Result<O, E> {
 #[derive(Debug, Clone, Copy)]
 pub struct ProjectOptic;
 
-impl<T> Optic<&'static T> for ProjectOptic
+impl<T: ?Sized> Optic<&'static T> for ProjectOptic
 where
     T: Projectable,
 {
