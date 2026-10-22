@@ -23,7 +23,7 @@ The framework makes liberal use of debug only panics, but is very careful about 
 
 ### User Errors
 - **User Panics** - This one should be obvious.
-- **Using `.call_read`/`.call_mut` in async**: All async code should use `.call_failable` or they might panic.
+- **Using `.get`/`.get_mut` in async**: All async code should use `.try_get` or they might panic.
 
 ## What does natrix do in the case of a panic?
 Unlike native rust, a panic in wasm does not prevent the program from continuing. This can lead to unexpected behavior if state is left in a invalid state, or worse lead to undefined behavior.

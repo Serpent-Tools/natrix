@@ -137,9 +137,8 @@ fn render_app() -> impl Element<App> {
 
 ## Generic state access.
 What if you want a more reusable component, lets say a slider?
-For this rust just uses closures, kinda.
-Pure rust closures dont allow for combined read and mut paths, so natrix uses [`Ref`](natrix::access::Ref), see the [Getters Chapter](ref.md) for detailed docs on them.
-[`Getter`](natrix::access::Getter) is a ergonomic "Alias Trait" for closures that take a `Ref` as the first argument, are cloneable, and are `'static`, all of which basically all closures in natrix need or might need at some point (and basically all closures will be), it saves you from having to write longer bounds, as well as needing to propagate a `Clone` bound after refactors as `Clone` is the default with `Getter`.  
+Pure rust closures dont allow for combined read and mut paths, so natrix uses [`Optic`](natrix::lens::Optic)s, see the [Optics Chapter](lens.md) for detailed docs on them.
+[`Lens`](natrix::lens::Lens) is the most common form of optic, one that outputs a reference, and since optics are `Copy` they can be moved into as many closures as you need.
 
 ```rust
 # extern crate natrix;
@@ -151,24 +150,24 @@ struct App {
     second: Signal<u8>,
 }
 
-fn counter(value: impl Getter<App, u8>) -> impl Element<App> {
+fn counter(value: impl Lens<&'static App, Target = u8>) -> impl Element<App> {
     e::div()
-        .child(e::button().text("-").on::<events::Click>(with!(move value |mut ctx: EventCtx<App>, _| {
-            *value.call_mut(&mut ctx) -= 1;
-        })))
-        .text(with!(move value |mut ctx: RenderCtx<App>| *value.call_read(&ctx)))
-        .child(e::button().text("+").on::<events::Click>(with!(move value |mut ctx: EventCtx<App>, _| {
-            *value.call_mut(&mut ctx) += 1;
-        })))
+        .child(e::button().text("-").on::<events::Click>(move |mut ctx: EventCtx<App>, _| {
+            *value.get_mut(&mut ctx) -= 1;
+        }))
+        .text(move |mut ctx: RenderCtx<App>| *value.get(&ctx))
+        .child(e::button().text("+").on::<events::Click>(move |mut ctx: EventCtx<App>, _| {
+            *value.get_mut(&mut ctx) += 1;
+        }))
 }
 
 fn render_app() -> impl Element<App> {
     e::div()
-        .child(counter(|ctx| field!(ctx.first).deref()))
-        .child(counter(|ctx| field!(ctx.second).deref()))
+        .child(counter(field!(App, .first).deref()))
+        .child(counter(field!(App, .second).deref()))
 }
 ```
-The amazing thing is that since the helper is still concrete (`impl Element<App>`), you can still access any field directly, if you said had a `theme` field, the `counter` function could access that directly without needing getters.
+The amazing thing is that since the helper is still concrete (`impl Element<App>`), you can still access any field directly, if you said had a `theme` field, the `counter` function could access that directly without needing optics.
 
 ## Generic State Store
 If you are writing a component library you naturally wont know the state, then you can simply use a generic:
@@ -176,15 +175,15 @@ If you are writing a component library you naturally wont know the state, then y
 # extern crate natrix;
 # use natrix::prelude::*;
 
-fn counter<S: State>(value: impl Getter<S, u8>) -> impl Element<S> {
+fn counter<S: State>(value: impl Lens<&'static S, Target = u8>) -> impl Element<S> {
     e::div()
-        .child(e::button().text("-").on::<events::Click>(with!(move value |mut ctx: EventCtx<S>, _| {
-            *value.call_mut(&mut ctx) -= 1;
-        })))
-        .text(with!(move value |mut ctx: RenderCtx<S>| *value.call_read(&ctx)))
-        .child(e::button().text("+").on::<events::Click>(with!(move value |mut ctx: EventCtx<S>, _| {
-            *value.call_mut(&mut ctx) += 1;
-        })))
+        .child(e::button().text("-").on::<events::Click>(move |mut ctx: EventCtx<S>, _| {
+            *value.get_mut(&mut ctx) -= 1;
+        }))
+        .text(move |mut ctx: RenderCtx<S>| *value.get(&ctx))
+        .child(e::button().text("+").on::<events::Click>(move |mut ctx: EventCtx<S>, _| {
+            *value.get_mut(&mut ctx) += 1;
+        }))
 }
 ```
 
@@ -200,7 +199,7 @@ mod my_library {
         fn get_language(&self) -> &'static str;
     }
 
-    pub fn greeting<S>(name: impl Getter<S, str>) -> impl Element<S>
+    pub fn greeting<S>(name: impl Lens<&'static S, Target = str>) -> impl Element<S>
         where S: State + HasLanguage
     {
         e::div()
@@ -210,7 +209,7 @@ mod my_library {
                     "EN" | _ => "Greetings "
                 }
             })
-            .text(move |mut ctx: RenderCtx<S>| name.call_read(&ctx).to_string())
+            .text(move |mut ctx: RenderCtx<S>| name.get(&ctx).to_string())
     }
 }
 
@@ -228,6 +227,6 @@ impl my_library::HasLanguage for App {
 
 fn render_app() -> impl Element<App> {
     e::div()
-        .child(my_library::greeting(|ctx: Ref<App>| field!(ctx.author_name).deref().deref()))
+        .child(my_library::greeting(field!(App, .author_name).deref().deref()))
 }
 ```
