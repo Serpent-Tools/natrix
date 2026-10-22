@@ -70,7 +70,7 @@ pub mod prelude {
     };
     pub use super::dom::{Element, events, html_elements as e};
     pub use super::field;
-    pub use super::lens::{Lens, Optic, root};
+    pub use super::lens::{Lens, Optic, Projectable, root};
     pub use super::reactivity::State;
     pub use super::reactivity::context::{EventCtx, RenderCtx};
     pub use super::reactivity::signal::Signal;
