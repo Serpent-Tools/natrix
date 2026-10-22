@@ -269,6 +269,7 @@ pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
     ///
     /// TODO: Mention also projectable signals.
     #[inline]
+    #[doc(alias = "as_ref")]
     fn project(self) -> impl Optic<S, Output = <Self::Target as Projectable>::Result>
     where
         Self::Target: Projectable,
@@ -355,9 +356,11 @@ pub trait Projectable {
     type Result: Shape;
 
     /// The `Read`/`Optic::get` path of this projection.
+    #[doc(alias = "as_ref")]
     fn project(&self) -> <Self::Result as Shape>::Read<'_>;
 
     /// The `Mut`/`Optic::get_mut` path of this projection.
+    #[doc(alias = "as_mut")]
     fn project_mut(&mut self) -> <Self::Result as Shape>::Mut<'_>;
 }
 
@@ -415,7 +418,6 @@ where
 }
 
 // TODO: Option/Result handling
-// TODO: Proejctable signals
 
 #[cfg(test)]
 mod tests {

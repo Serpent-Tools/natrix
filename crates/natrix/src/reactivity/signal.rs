@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 
 use crate::error_handling::log_or_panic;
+use crate::lens::{Projectable, Shape};
 use crate::prelude::State;
 use crate::reactivity::core;
 use crate::reactivity::core::SignalDepList;
@@ -79,111 +80,97 @@ impl<T: Default> Default for Signal<T> {
     }
 }
 
-// /// Trait for `Project` type whose target contains a state.
-// /// Such as `Option<Signal<...>>`
-// pub trait ProjectIntoState: Project {}
-// impl<T: State> ProjectIntoState for Option<T> {}
-// impl<T: State, E: State> ProjectIntoState for Result<T, E> {}
-//
-// impl<T: ProjectIntoState> Signal<T> {
-//     /// Project a `&mut Signal<Option<T>>` (or other `Project` type) into a `Option<&mut T>`,
-//     /// without triggering re-renders of subscribers to this `Signal`.
-//     /// This is mainly useful with your own state types.
-//     ///
-//     /// Consider the following code:
-//     /// ```
-//     /// # use natrix::prelude::*;
-//     /// #[derive(State)]
-//     /// struct Book {
-//     ///     name: Signal<String>,
-//     ///     cost: Signal<u8>,
-//     /// }
-//     ///
-//     /// #[derive(State)]
-//     /// struct App {
-//     ///     book: Signal<Option<Book>>
-//     /// }
-//     ///
-//     /// fn modify_book(app: &mut App) {
-//     ///     if let Some(book) = (*app.book).as_mut() {
-//     ///         *book.cost += 2;
-//     ///     }
-//     /// }
-//     /// ```
-//     /// Here because we dereference the `app.book` signal any closures dependent on `name` (and by
-//     /// extension the whole book) would re-run even though we only touch cost.
-//     /// If we instead use this method:
-//     /// ```
-//     /// # use natrix::prelude::*;
-//     /// # #[derive(State)]
-//     /// # struct Book {
-//     /// #     name: Signal<String>,
-//     /// #    cost: Signal<u8>,
-//     /// # }
-//     /// #
-//     /// # #[derive(State)]
-//     /// # struct App {
-//     /// #     book: Signal<Option<Book>>
-//     /// # }
-//     /// #
-//     /// fn modify_book(app: &mut App) {
-//     ///     if let Some(book) = app.book.project_mut() {
-//     ///         *book.cost += 2;
-//     ///     }
-//     /// }
-//     /// ```
-//     /// Now only dependencies of `book.cost` will re-run.
-//     ///
-//     /// This method requires that the signal type (in addition to the normal `Project`) implements
-//     /// `ProjectIntoState`, which asserts that the project target is also a `State` type (sadly rust
-//     /// does not give a way to easily express this restriction against just `Project`)
-//     ///
-//     /// The [`Project`] implementation on `Signal` behaves the same way in its mut path.
-//     #[must_use]
-//     #[inline]
-//     pub fn project_mut<'this>(
-//         &'this mut self,
-//     ) -> <T::Projected<'this> as Downgrade<'this>>::MutOutput
-//     where
-//         T::Projected<'this>: Downgrade<'this>,
-//     {
-//         (Ref::project).call_mut(&mut self.data)
-//     }
-//
-//     /// Project into the inner value, without triggering re-renders of subscribers to this `Signal`.
-//     ///
-//     /// Alias for [`Self::project_mut`].
-//     #[must_use]
-//     #[inline]
-//     pub fn as_mut<'this>(&'this mut self) -> <T::Projected<'this> as Downgrade<'this>>::MutOutput
-//     where
-//         T::Projected<'this>: Downgrade<'this>,
-//     {
-//         self.project_mut()
-//     }
-// }
-//
-// impl<T: ProjectIntoState> Project for Signal<T> {
-//     type Projected<'reference>
-//         = T::Projected<'reference>
-//     where
-//         Self: 'reference;
-//
-//     /// The mut path leaves subscribers to the whole value alone, like [`Signal::project_mut`].
-//     fn project(value: Ref<'_, Self>) -> Self::Projected<'_> {
-//         if let Ref::Read(this) = &value
-//             && let Some(hook) = core::statics::current_hook()
-//         {
-//             if let Ok(mut deps) = this.deps.try_borrow_mut() {
-//                 deps.insert(hook);
-//             } else {
-//                 log_or_panic!("Signal deps list already borrowed");
-//             }
-//         }
-//
-//         crate::field!(value.data).project()
-//     }
-// }
+/// Trait for `Project` type whose target contains a state.
+/// Such as `Option<Signal<...>>`
+pub trait ProjectIntoState: Projectable {}
+impl<T: State> ProjectIntoState for Option<T> {}
+impl<T: State, E: State> ProjectIntoState for Result<T, E> {}
+
+impl<T: ProjectIntoState> Signal<T> {
+    /// Alias for `project_mut` for intentionally shadowing `as_mut` on `T`.
+    ///
+    /// Prefer useing `project_mut` instead.
+    #[inline]
+    #[deprecated(note = "Prefer using `project_mut` instead.")]
+    pub fn as_mut(&mut self) -> <T::Result as Shape>::Mut<'_> {
+        self.project_mut()
+    }
+}
+
+impl<T: ProjectIntoState> Projectable for Signal<T> {
+    type Result = T::Result;
+
+    /// Project a `&mut Signal<Option<T>>` (or other `Project` type) into a `Option<&mut T>`,
+    /// without triggering re-renders of subscribers to this `Signal`.
+    /// This is mainly useful with your own state types.
+    ///
+    /// Consider the following code:
+    /// ```
+    /// # use natrix::prelude::*;
+    /// #[derive(State)]
+    /// struct Book {
+    ///     name: Signal<String>,
+    ///     cost: Signal<u8>,
+    /// }
+    ///
+    /// #[derive(State)]
+    /// struct App {
+    ///     book: Signal<Option<Book>>
+    /// }
+    ///
+    /// fn modify_book(app: &mut App) {
+    ///     if let Some(book) = (*app.book).as_mut() {
+    ///         *book.cost += 2;
+    ///     }
+    /// }
+    /// ```
+    /// Here because we dereference the `app.book` signal any closures dependent on `name` (and by
+    /// extension the whole book) would re-run even though we only touch cost.
+    /// If we instead use this method:
+    /// ```
+    /// # use natrix::prelude::*;
+    /// # #[derive(State)]
+    /// # struct Book {
+    /// #     name: Signal<String>,
+    /// #    cost: Signal<u8>,
+    /// # }
+    /// #
+    /// # #[derive(State)]
+    /// # struct App {
+    /// #     book: Signal<Option<Book>>
+    /// # }
+    /// #
+    /// fn modify_book(app: &mut App) {
+    ///     if let Some(book) = app.book.project_mut() {
+    ///         *book.cost += 2;
+    ///     }
+    /// }
+    /// ```
+    /// Now only dependencies of `book.cost` will re-run.
+    ///
+    /// This method requires that the signal type (in addition to the normal `Project`) implements
+    /// `ProjectIntoState`, which asserts that the project target is also a `State` type (sadly rust
+    /// does not give a way to easily express this restriction against just `Project`)
+    ///
+    /// The [`Project`] implementation on `Signal` behaves the same way in its mut path.
+    #[inline]
+    fn project_mut(&mut self) -> <T::Result as Shape>::Mut<'_> {
+        self.data.project_mut()
+    }
+
+    #[inline]
+    fn project(&self) -> <Self::Result as Shape>::Read<'_> {
+        if let Some(hook) = core::statics::current_hook() {
+            if let Ok(mut deps) = self.deps.try_borrow_mut() {
+                deps.insert(hook);
+            } else {
+                log_or_panic!("Signal deps list already borrowed");
+            }
+        }
+
+        self.data.project()
+    }
+}
 
 #[cfg(test)]
 #[expect(clippy::expect_used, reason = "tests")]
@@ -246,53 +233,57 @@ mod tests {
         assert_eq!(hooks, HashSet::from([hook_outer, hook_inner]));
     }
 
-    // #[test]
-    // fn project_mut_alerts_only_inner() {
-    //     let mut signal = Signal::new(Some(Signal::new(10)));
-    //     let hook_outer = HookKey::new(0, 0);
-    //     let hook_inner = HookKey::new(1, 0);
-    //
-    //     statics::with_hook(hook_outer, || {
-    //         let _ = *signal;
-    //     });
-    //     statics::with_hook(hook_inner, || {
-    //         if let Some(inner) = &*signal {
-    //             let _: i32 = **inner;
-    //         }
-    //     });
-    //
-    //     let (dirty, ()) = statics::with_dirty_tracking(|| {
-    //         if let Some(inner) = signal.project_mut() {
-    //             **inner = 10;
-    //         }
-    //     });
-    //
-    //     let hooks: HashSet<_> = dirty.into_iter().flatten().collect();
-    //     assert_eq!(hooks, HashSet::from([hook_inner]));
-    // }
-    //
-    // #[test]
-    // fn as_mut_resolves_to_signal_not_option() {
-    //     let mut signal = Signal::new(Some(Signal::new(10)));
-    //     let hook_outer = HookKey::new(0, 0);
-    //     let hook_inner = HookKey::new(1, 0);
-    //
-    //     statics::with_hook(hook_outer, || {
-    //         let _ = *signal;
-    //     });
-    //     statics::with_hook(hook_inner, || {
-    //         if let Some(inner) = &*signal {
-    //             let _: i32 = **inner;
-    //         }
-    //     });
-    //
-    //     let (dirty, ()) = statics::with_dirty_tracking(|| {
-    //         if let Some(inner) = signal.as_mut() {
-    //             **inner = 10;
-    //         }
-    //     });
-    //
-    //     let hooks: HashSet<_> = dirty.into_iter().flatten().collect();
-    //     assert_eq!(hooks, HashSet::from([hook_inner]));
-    // }
+    #[test]
+    fn project_mut_alerts_only_inner() {
+        let mut signal = Signal::new(Some(Signal::new(10)));
+        let hook_outer = HookKey::new(0, 0);
+        let hook_inner = HookKey::new(1, 0);
+
+        statics::with_hook(hook_outer, || {
+            let _ = *signal;
+        });
+        statics::with_hook(hook_inner, || {
+            if let Some(inner) = &*signal {
+                let _: i32 = **inner;
+            }
+        });
+
+        let (dirty, ()) = statics::with_dirty_tracking(|| {
+            if let Some(inner) = signal.project_mut() {
+                **inner = 10;
+            }
+        });
+
+        let hooks: HashSet<_> = dirty.into_iter().flatten().collect();
+        assert_eq!(hooks, HashSet::from([hook_inner]));
+    }
+
+    #[expect(
+        deprecated,
+        reason = "We are testing the resolution of said deprecated method."
+    )]
+    #[test]
+    fn project_mut_resolves_to_signal_not_option() {
+        let mut signal = Signal::new(Some(Signal::new(10)));
+        let hook_outer = HookKey::new(0, 0);
+        let hook_inner = HookKey::new(1, 0);
+
+        statics::with_hook(hook_outer, || {
+            let _ = *signal;
+        });
+        statics::with_hook(hook_inner, || {
+            if let Some(inner) = &*signal {
+                let _: i32 = **inner;
+            }
+        });
+
+        let (dirty, ()) = statics::with_dirty_tracking(|| {
+            if let Some(inner) = signal.as_mut() {
+                **inner = 10;
+            }
+        });
+
+        let hooks: HashSet<_> = dirty.into_iter().flatten().collect();
+        assert_eq!(hooks, HashSet::from([hook_inner]));
+    }
 }
