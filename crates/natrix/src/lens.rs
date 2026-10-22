@@ -68,12 +68,32 @@ pub trait Optic<S: Shape>: Copy + Sized + 'static {
     type Output: Shape;
 
     /// Execute the `Read` path of this optic
+    ///
+    /// # Panics
+    /// if the optic path contains guards or similar, and they are moved outside their intended
+    /// scope. See `try_get` for alternative.
     #[must_use]
     fn get<'read>(&self, value: S::Read<'read>) -> <Self::Output as Shape>::Read<'read>;
 
     /// Execute the `Mut` path of this optic
+    ///
+    /// # Panics
+    /// if the optic path contains guards or similar, and they are moved outside their intended
+    /// scope. See `try_get` for alternative.
     #[must_use]
     fn get_mut<'write>(&self, value: S::Mut<'write>) -> <Self::Output as Shape>::Mut<'write>;
+
+    /// Execute the `Mut` path of this optic, but return `None` if any part of the chain, mainly
+    /// guards, fail. This should be used for async or any other situation where a optic is sotred
+    /// outside the normal reactivity tree.
+    #[must_use]
+    #[inline]
+    fn try_get<'write>(
+        &self,
+        value: S::Mut<'write>,
+    ) -> Option<<Self::Output as Shape>::Mut<'write>> {
+        Some(self.get_mut(value))
+    }
 
     /// Chain this optic into another one.
     ///
@@ -131,11 +151,19 @@ where
     ) -> <Self::Output as Shape>::Mut<'write> {
         self.1.get_mut(self.0.get_mut(value))
     }
+
+    #[inline]
+    fn try_get<'write>(
+        &self,
+        value: <S as Shape>::Mut<'write>,
+    ) -> Option<<Self::Output as Shape>::Mut<'write>> {
+        self.1.try_get(self.0.try_get(value)?)
+    }
 }
 
 /// Internal optic type for `root`, that returns the input unchanged, but is a `Optic`.  
 #[derive(Debug)]
-struct Root<T>(PhantomData<T>);
+pub struct Root<T>(PhantomData<T>);
 impl<T> Clone for Root<T> {
     #[inline]
     fn clone(&self) -> Self {
@@ -387,9 +415,7 @@ where
 }
 
 // TODO: Option/Result handling
-
 // TODO: Proejctable signals
-// TODO: ... async
 
 #[cfg(test)]
 mod tests {
