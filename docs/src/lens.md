@@ -136,9 +136,44 @@ For example if a component wants an `impl Optic<&'static App, Output = Option<&'
 
 `Signal` also implements `Projectable` when it contains a `State`, see [Projecting signals](state.md#project-ing-signals).
 
+### `Owned`
+Sometimes yours optic needs to return owned data, for example if you want to either display a error or modify a value you might want a optic returning `Result<&i32, String>`,
+The issue here is that due to limitations this is not a valid shape as `String` does not implement `Shape`, to solve this you can wrap it in `Owned`. 
+
 ### `.try_get`
 [`.try_get`](natrix::lens::Optic::try_get) runs the mut path, but returns `None` if any part of the chain fails, such as a [guard](reactivity.md#guards---handling-optionresult) whose value is no longer present.
 This must be used in async code, see [the async chapter](async-components.md#optics).
+
+## Cheatsheets
+### `Shape`
+| `Output = ` | `get` | `get_mut` | 
+| :---: | :---: | :---: |
+| `&'static i32` | `&i32` | `&mut i32` | 
+| `&'static T` | `&T` | `&mut T` |
+| `Option<&'static T>` | `Option<&T>` | `Option<&mut T>` | 
+| `Result<&'static T, &'static E>` | `Result<&T, &E>` | `Result<&mut T, &mut E>` |
+| `Owned<T>` | `T` | `T` | 
+| `Result<&'static T, Owned<E>>` | `Result<&T, E>` | `Result<&mut T, E>` | 
+| `&'static &'static T` | `&&'static T` | `&mut &'static T` |
+| `Owned<&'static T>` | `&'static T` | `&'static T` |
+
+
+### Methods
+
+> [!NOTE]
+> This table will leave out `'static` for shortness
+
+| `Output = ` | method | `Output = ` |
+| :---: | :---: | :---: |
+| `&Book` | `.then(field!(Book, .name))` | `&String` | 
+| `&String` | `.deref()` | `&str` |
+| `&Signal<i32>` | `.deref()` | `&i32` |
+| `&Option<i32>` | `.project()` | `Option<&i32>` |
+| `&Result<i32, String>` | `.project()` | `Result<&i32, &String>` |
+| `&Signal<Option<i32>>` | `.project()` | `Option<&i32>` | 
+| `&ThirdParty` | `.ref_map(\|val\| val.foo(), \|val\| val.foo_mut())` | `&Foo` |
+| `&T` | `.into::<Option<&T>>()` | `Option<&T>`  |
+
 
 ## Best Practices
 
@@ -155,3 +190,6 @@ Similar principles apply in general.
 ### `T` vs optics
 Generally if the value is cheap to clone/copy and you only need read access a direct owned `T` is often better.
 As this allows the value to be a constant, or even computed.
+
+### Use `Owned` in composition where possible.
+If you are taking say a `Result` and only need mutable access to the `Ok` variant consider taking a `Owned` for the error variant for more flexibilty.

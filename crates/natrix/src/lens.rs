@@ -51,6 +51,19 @@ impl<O: Shape, E: Shape> Shape for Result<O, E> {
     type Mut<'write> = Result<O::Mut<'write>, E::Mut<'write>>;
 }
 
+/// A `Shape` that resolves to `T` for both read and mut, needed for expressing owned data in a
+/// `Optic` (because otherwise the implementation would collidie with every other one).
+///
+/// NOTE: this is intended for use in `Result` (and similar) such as
+/// `Optic<..., Output = Result<&'static str, String>>`,
+/// if you only require owned data use a normal closure instead.
+pub struct Owned<T>(T);
+
+impl<T> Shape for Owned<T> {
+    type Read<'read> = T;
+    type Mut<'write> = T;
+}
+
 /// An optic is a generalization of lenses, prisms, etc.
 ///
 /// It can be thought of as a pair of closures, one for each variant of a `Shape`, While strictly
@@ -118,11 +131,37 @@ pub trait Optic<S: Shape>: Copy + Sized + 'static {
     /// let book2_name = root::<&SomeState>().then(field!(SomeState, .book2)).then(book_to_name);
     /// ```
     #[inline]
-    fn then<R>(self, next: R) -> impl Optic<S, Output = R::Output>
+    fn then<R>(self, next: R) -> Chain<Self, R>
     where
         R: Optic<Self::Output>,
     {
         Chain(self, next)
+    }
+
+    /// Call `Into::into` on the value, such as converting from `&T` to `Option<&T>` for functions
+    /// that require it.
+    ///
+    /// ```rust
+    /// # use natrix::prelude::*;
+    /// # use natrix::lens;
+    /// let lens = lens::root::<&'static i32>().then_into::<Option<&'static i32>>();
+    ///
+    /// let mut value = 10;
+    /// if let Some(value) = lens.get_mut(&mut value) {
+    ///     *value = 10;
+    /// }
+    /// assert_eq!(value, 10);
+    /// ```
+    ///
+    /// Similarlly to `deref` this assumes the read and write `Into::into` paths are equivalanet,
+    /// which they will be for most sensible types.
+    // NOTE: called `then_into` to not conflict with `Into::into`
+    fn then_into<T: Shape + 'static>(self) -> Chain<Self, IntoOptic<T>>
+    where
+        for<'read> T::Read<'read>: From<<Self::Output as Shape>::Read<'read>>,
+        for<'write> T::Mut<'write>: From<<Self::Output as Shape>::Mut<'write>>,
+    {
+        self.then(IntoOptic(PhantomData))
     }
 }
 
@@ -162,6 +201,7 @@ where
 }
 
 /// Internal optic type for `root`, that returns the input unchanged, but is a `Optic`.  
+#[must_use = "Lenses do nothing if not called"]
 #[derive(Debug)]
 pub struct Root<T>(PhantomData<T>);
 impl<T> Clone for Root<T> {
@@ -193,11 +233,12 @@ impl<T: Shape + 'static> Optic<T> for Root<T> {
 /// this types generic. This is useful for starting the chain of a optic by giving you something to
 /// call the chaining trait methods on such as `.deref()`.
 #[inline]
-pub fn root<T: Shape + 'static>() -> impl Optic<T, Output = T> {
+pub fn root<T: Shape + 'static>() -> Root<T> {
     Root::<T>(PhantomData)
 }
 
 /// Internal type for `.deref` that calls `.deref`/`.deref_mut`.
+#[must_use = "Lenses do nothing if not called"]
 #[derive(Clone, Copy, Debug)]
 pub struct DerefOptic;
 
@@ -238,7 +279,7 @@ pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
     /// WARN: This assumes that a types `Deref` and `DerefMut` agree with eachother, which for most
     /// sensible types they will.
     #[inline]
-    fn deref(self) -> impl Optic<S, Output = &'static <Self::Target as Deref>::Target>
+    fn deref(self) -> Chain<Self, DerefOptic>
     where
         Self::Target: Deref + DerefMut,
     {
@@ -251,11 +292,16 @@ pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
     ///
     /// WARN: This requires you to manually ophold the optic "same path" invariant.
     #[inline]
-    fn ref_map<R: ?Sized + 'static>(
+    fn ref_map<R, Fread, Fmut>(
         self,
-        read: impl for<'val> Fn(&'val Self::Target) -> &'val R + Copy + 'static,
-        write: impl for<'val> Fn(&'val mut Self::Target) -> &'val mut R + Copy + 'static,
-    ) -> impl Optic<S, Output = &'static R> {
+        read: Fread,
+        write: Fmut,
+    ) -> Chain<Self, ReferenceMap<Fread, Fmut>>
+    where
+        R: ?Sized + 'static,
+        Fread: for<'val> Fn(&'val Self::Target) -> &'val R + Copy + 'static,
+        Fmut: for<'val> Fn(&'val mut Self::Target) -> &'val mut R + Copy + 'static,
+    {
         self.then(ReferenceMap::new(read, write))
     }
 
@@ -274,7 +320,7 @@ pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
     /// details.
     #[inline]
     #[doc(alias = "as_ref")]
-    fn project(self) -> impl Optic<S, Output = <Self::Target as Projectable>::Result>
+    fn project(self) -> Chain<Self, ProjectOptic>
     where
         Self::Target: Projectable,
     {
@@ -398,6 +444,7 @@ impl<O: 'static, E: 'static> Projectable for Result<O, E> {
 
 /// Optic for using `Projectable`
 #[derive(Debug, Clone, Copy)]
+#[must_use = "Lenses do nothing if not called"]
 pub struct ProjectOptic;
 
 impl<T: ?Sized> Optic<&'static T> for ProjectOptic
@@ -421,7 +468,47 @@ where
     }
 }
 
-// TODO: Option/Result handling
+/// Optic for calling `.into`.
+#[derive(Debug)]
+#[must_use = "Lenses do nothing if not called"]
+pub struct IntoOptic<T>(PhantomData<T>);
+impl<T> Copy for IntoOptic<T> {}
+impl<T> Clone for IntoOptic<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<S, T> Optic<S> for IntoOptic<T>
+where
+    S: Shape,
+    T: Shape + 'static,
+    for<'read> T::Read<'read>: From<S::Read<'read>>,
+    for<'write> T::Mut<'write>: From<S::Mut<'write>>,
+{
+    type Output = T;
+
+    #[inline]
+    fn get<'read>(&self, value: <S as Shape>::Read<'read>) -> <Self::Output as Shape>::Read<'read> {
+        value.into()
+    }
+
+    #[inline]
+    fn get_mut<'write>(
+        &self,
+        value: <S as Shape>::Mut<'write>,
+    ) -> <Self::Output as Shape>::Mut<'write> {
+        value.into()
+    }
+}
+
+// TODO: `Result::ok`
+// TODO: `Result::err`
+// TODO: `Option::map`
+// TODO: `Result::map`
+// TODO: `Result::map_err`
+// TODO: into split
+// TODO: from split
 
 #[cfg(test)]
 mod tests {
