@@ -93,7 +93,7 @@ impl<S: 'static, T: Shape + 'static> Guardable<S> for Option<T> {
         O: Optic<&'static S, Output = Self>,
     {
         if discriminant {
-            Some(Chain(optic, UnwrapGuard))
+            Some(optic.then(UnwrapGuard))
         } else {
             None
         }
@@ -180,9 +180,9 @@ impl<S: 'static, O: Shape + 'static, E: Shape + 'static> Guardable<S> for Result
         Opt: Optic<&'static S, Output = Self>,
     {
         if discriminant {
-            Ok(Chain(optic, OkGuard))
+            Ok(optic.then(OkGuard))
         } else {
-            Err(Chain(optic, ErrGuard))
+            Err(optic.then(ErrGuard))
         }
     }
 }

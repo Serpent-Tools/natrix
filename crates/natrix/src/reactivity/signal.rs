@@ -176,7 +176,6 @@ impl<T: ProjectIntoState> Projectable for Signal<T> {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "tests")]
 mod tests {
 
     use std::collections::HashSet;
