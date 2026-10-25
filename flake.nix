@@ -8,7 +8,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     serpentine = {
-      url = "github:Serpent-Tools/serpentine/v1.0.3";
+      url = "github:Serpent-Tools/serpentine/v1.0.4";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

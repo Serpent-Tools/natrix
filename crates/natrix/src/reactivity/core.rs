@@ -792,7 +792,7 @@ impl<S: State> InnerCtx<S> {
 
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
-#[expect(clippy::expect_used, clippy::unreachable, reason = "tests")]
+#[expect(clippy::unreachable, reason = "tests")]
 mod tests {
     use proptest::proptest;
 
