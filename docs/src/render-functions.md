@@ -150,9 +150,17 @@ struct App {
     second: Signal<u8>,
 }
 
+impl App {
+    fn increment_both(&mut self) {
+        self.first += 1;
+        self.second += 1;
+    }
+}
+
 fn counter(value: impl Lens<&'static App, Target = u8>) -> impl Element<App> {
     e::div()
         .child(e::button().text("-").on::<events::Click>(move |mut ctx: EventCtx<App>, _| {
+            ctx.increment_both();
             *value.get_mut(&mut ctx) -= 1;
         }))
         .text(move |mut ctx: RenderCtx<App>| *value.get(&ctx))

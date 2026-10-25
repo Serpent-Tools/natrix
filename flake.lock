@@ -68,16 +68,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1792590385,
-        "narHash": "sha256-ghSZZIAmaiX4hWzt075Lk1jwcxikVWBQjXzKOTZ02e8=",
+        "lastModified": 1793298452,
+        "narHash": "sha256-fEmQuZnsYlx4u/X1ky99OnkDkIUC0Ie6qjEVFDxLG4k=",
         "owner": "Serpent-Tools",
         "repo": "serpentine",
-        "rev": "6e21c52fa88f76cc538a44d7ef1f5da05dee7f10",
+        "rev": "33ec98ee4d2d71352a05bed6b876d62cc82c2da1",
         "type": "github"
       },
       "original": {
         "owner": "Serpent-Tools",
-        "ref": "v1.0.3",
+        "ref": "v1.0.4",
         "repo": "serpentine",
         "type": "github"
       }
