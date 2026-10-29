@@ -92,8 +92,10 @@ pub fn parse_wasm_stream<R: Read>(mut reader: R) -> Result<WasmParseResult> {
                     }
                 }
             }
-            wasmparser::Payload::CodeSectionStart { range, .. } => {
-                code_section_offset = range.start;
+            wasmparser::Payload::CodeSectionStart {
+                unchecked_range, ..
+            } => {
+                code_section_offset = unchecked_range.start;
             }
             wasmparser::Payload::End(_) => break,
             _ => {}
