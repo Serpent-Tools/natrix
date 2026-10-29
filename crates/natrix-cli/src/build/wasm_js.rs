@@ -49,7 +49,10 @@ impl<'allocator> oxc::ast_visit::VisitMut<'allocator> for RenameVisitor<'allocat
         let Some(current_name) = it.static_name() else {
             return;
         };
-        if let Some(new_name) = self.mapping.0.get(&*current_name) {
+        let Some(current_name) = current_name.as_str() else {
+            return;
+        };
+        if let Some(new_name) = self.mapping.0.get(current_name) {
             let new_name = oxc::str::Ident::from_str_in(new_name, &self.builder);
             *it = oxc::ast::ast::PropertyKey::new_static_identifier(
                 it.span(),
