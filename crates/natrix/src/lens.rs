@@ -138,6 +138,22 @@ pub trait Optic<S: Shape>: Copy + Sized + 'static {
         Chain(self, next)
     }
 
+    /// Chain a operation into this optic, for example `.perform(lens::ResultOk)`.
+    ///
+    /// Most operations will have helper methods on various traits such as [`OpticResultExt::ok`]
+    /// for [`ResultOk`].
+    #[inline]
+    fn perform<Op>(self, operation: Op) -> Chain<Self, OperationOptic<Op>>
+    where
+        Op: Operation<Self::Output>,
+        for<'read> <Self::Output as Shape>::Read<'read>:
+            OperationTarget<Op, <Op::Output as Shape>::Read<'read>>,
+        for<'write> <Self::Output as Shape>::Mut<'write>:
+            OperationTarget<Op, <Op::Output as Shape>::Mut<'write>>,
+    {
+        self.then(OperationOptic(operation))
+    }
+
     /// Call `Into::into` on the value, such as converting from `&T` to `Option<&T>` for functions
     /// that require it.
     ///
@@ -156,12 +172,12 @@ pub trait Optic<S: Shape>: Copy + Sized + 'static {
     /// Similarly to `deref` this assumes the read and write `Into::into` paths are equivalanet,
     /// which they will be for most sensible types.
     // NOTE: called `then_into` to not conflict with `Into::into`
-    fn then_into<T: Shape + 'static>(self) -> Chain<Self, IntoOptic<T>>
+    fn then_into<T: Shape + 'static>(self) -> Chain<Self, OperationOptic<Convert<T>>>
     where
         for<'read> T::Read<'read>: From<<Self::Output as Shape>::Read<'read>>,
         for<'write> T::Mut<'write>: From<<Self::Output as Shape>::Mut<'write>>,
     {
-        self.then(IntoOptic(PhantomData))
+        self.perform(Convert(PhantomData))
     }
 }
 
@@ -237,28 +253,27 @@ pub fn root<T: Shape + 'static>() -> Root<T> {
     Root::<T>(PhantomData)
 }
 
-/// Internal type for `.deref` that calls `.deref`/`.deref_mut`.
-#[must_use = "Lenses do nothing if not called"]
+/// Internal operation for `.deref` that calls `.deref`/`.deref_mut`.
 #[derive(Clone, Copy, Debug)]
-pub struct DerefOptic;
+pub struct Dereference;
 
-impl<T: ?Sized + Deref + DerefMut + 'static> Optic<&'static T> for DerefOptic {
+impl<T: ?Sized + Deref + 'static> Operation<&'static T> for Dereference {
     type Output = &'static T::Target;
+}
 
+impl<'read, T: ?Sized + Deref> OperationTarget<Dereference, &'read T::Target> for &'read T {
     #[inline]
-    fn get<'read>(
-        &self,
-        value: <&'static T as Shape>::Read<'read>,
-    ) -> <Self::Output as Shape>::Read<'read> {
-        &**value
+    fn execute(self, _op: &Dereference) -> &'read T::Target {
+        self
     }
+}
 
+impl<'write, T: ?Sized + DerefMut> OperationTarget<Dereference, &'write mut T::Target>
+    for &'write mut T
+{
     #[inline]
-    fn get_mut<'write>(
-        &self,
-        value: <&'static T as Shape>::Mut<'write>,
-    ) -> <Self::Output as Shape>::Mut<'write> {
-        &mut **value
+    fn execute(self, _op: &Dereference) -> &'write mut T::Target {
+        self
     }
 }
 
@@ -279,11 +294,11 @@ pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
     /// WARN: This assumes that a types `Deref` and `DerefMut` agree with eachother, which for most
     /// sensible types they will.
     #[inline]
-    fn deref(self) -> Chain<Self, DerefOptic>
+    fn deref(self) -> Chain<Self, OperationOptic<Dereference>>
     where
         Self::Target: Deref + DerefMut,
     {
-        self.then(DerefOptic)
+        self.perform(Dereference)
     }
 
     /// Create a optic that uses the given closures for its read and write paths.
@@ -296,13 +311,13 @@ pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
         self,
         read: Fread,
         write: Fmut,
-    ) -> Chain<Self, ReferenceMap<Fread, Fmut>>
+    ) -> Chain<Self, OperationOptic<ReferenceMap<Fread, Fmut>>>
     where
         R: ?Sized + 'static,
         Fread: for<'val> Fn(&'val Self::Target) -> &'val R + Copy + 'static,
         Fmut: for<'val> Fn(&'val mut Self::Target) -> &'val mut R + Copy + 'static,
     {
-        self.then(ReferenceMap::new(read, write))
+        self.perform(ReferenceMap::new(read, write))
     }
 
     /// Project the output value, i.e turning `&Option<T>` into `Option<T>`, i.e a prism (in
@@ -320,11 +335,11 @@ pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
     /// details.
     #[inline]
     #[doc(alias = "as_ref")]
-    fn project(self) -> Chain<Self, ProjectOptic>
+    fn project(self) -> Chain<Self, OperationOptic<Project>>
     where
         Self::Target: Projectable,
     {
-        self.then(ProjectOptic)
+        self.perform(Project)
     }
 }
 
@@ -337,11 +352,10 @@ where
     type Target = T;
 }
 
-/// The actual `Optic` produced by `ref_map`
+/// The operation performed by `ref_map`.
 ///
-/// in most cases you dont need to construct this directly.
+/// In most cases you dont need to construct this directly.
 #[derive(Debug, Clone, Copy)]
-#[must_use = "Lenses do nothing if not called"]
 pub struct ReferenceMap<FRead, FMut>(FRead, FMut);
 
 impl<FRead, FMut> ReferenceMap<FRead, FMut> {
@@ -358,28 +372,34 @@ impl<FRead, FMut> ReferenceMap<FRead, FMut> {
     }
 }
 
-impl<Input: ?Sized + 'static, Output: ?Sized + 'static, FRead, FMut> Optic<&'static Input>
+impl<Input: ?Sized + 'static, Output: ?Sized + 'static, FRead, FMut> Operation<&'static Input>
     for ReferenceMap<FRead, FMut>
 where
     FRead: for<'val> Fn(&'val Input) -> &'val Output + Copy + 'static,
     FMut: for<'val> Fn(&'val mut Input) -> &'val mut Output + Copy + 'static,
 {
     type Output = &'static Output;
+}
 
+impl<'read, Input: ?Sized, Output: ?Sized, FRead, FMut>
+    OperationTarget<ReferenceMap<FRead, FMut>, &'read Output> for &'read Input
+where
+    FRead: for<'val> Fn(&'val Input) -> &'val Output,
+{
     #[inline]
-    fn get<'read>(
-        &self,
-        value: <&'static Input as Shape>::Read<'read>,
-    ) -> <Self::Output as Shape>::Read<'read> {
-        (self.0)(value)
+    fn execute(self, op: &ReferenceMap<FRead, FMut>) -> &'read Output {
+        (op.0)(self)
     }
+}
 
+impl<'write, Input: ?Sized, Output: ?Sized, FRead, FMut>
+    OperationTarget<ReferenceMap<FRead, FMut>, &'write mut Output> for &'write mut Input
+where
+    FMut: for<'val> Fn(&'val mut Input) -> &'val mut Output,
+{
     #[inline]
-    fn get_mut<'write>(
-        &self,
-        value: <&'static Input as Shape>::Mut<'write>,
-    ) -> <Self::Output as Shape>::Mut<'write> {
-        (self.1)(value)
+    fn execute(self, op: &ReferenceMap<FRead, FMut>) -> &'write mut Output {
+        (op.1)(self)
     }
 }
 
@@ -392,7 +412,9 @@ where
 #[macro_export]
 macro_rules! field {
     ($type:ty, $(.$field:ident)+) => {
-        $crate::lens::ReferenceMap::new::<$type, _>(|value| &value$(.$field)+, |value| &mut value$(.$field)+)
+        $crate::lens::OperationOptic(
+            $crate::lens::ReferenceMap::new::<$type, _>(|value| &value$(.$field)+, |value| &mut value$(.$field)+)
+        )
     };
 }
 
@@ -400,7 +422,7 @@ macro_rules! field {
 /// of themself containing reference. In other words the `as_ref` methods on `Option`/`Result`.
 ///
 /// This basically represents a "type-native" `Optic<&Self, Output = ...>`, which can be applied
-/// using `Optic::project`.
+/// using `Lens::project`.
 pub trait Projectable {
     /// The output of the projection, analogous to `Optic::Output`
     type Result: Shape;
@@ -442,118 +464,146 @@ impl<O: 'static, E: 'static> Projectable for Result<O, E> {
     }
 }
 
-/// Optic for using `Projectable`
+/// Operation for using `Projectable`
 #[derive(Debug, Clone, Copy)]
-#[must_use = "Lenses do nothing if not called"]
-pub struct ProjectOptic;
+pub struct Project;
 
-impl<T: ?Sized> Optic<&'static T> for ProjectOptic
-where
-    T: Projectable,
-{
+impl<T: ?Sized + Projectable> Operation<&'static T> for Project {
     type Output = T::Result;
+}
 
-    fn get<'read>(
-        &self,
-        value: <&'static T as Shape>::Read<'read>,
-    ) -> <Self::Output as Shape>::Read<'read> {
-        value.project()
-    }
-
-    fn get_mut<'write>(
-        &self,
-        value: <&'static T as Shape>::Mut<'write>,
-    ) -> <Self::Output as Shape>::Mut<'write> {
-        value.project_mut()
+impl<'read, T: ?Sized + Projectable> OperationTarget<Project, <T::Result as Shape>::Read<'read>>
+    for &'read T
+{
+    #[inline]
+    fn execute(self, _op: &Project) -> <T::Result as Shape>::Read<'read> {
+        self.project()
     }
 }
 
-pub trait OperationOutput<Input: Shape> {
+impl<'write, T: ?Sized + Projectable> OperationTarget<Project, <T::Result as Shape>::Mut<'write>>
+    for &'write mut T
+{
+    #[inline]
+    fn execute(self, _op: &Project) -> <T::Result as Shape>::Mut<'write> {
+        self.project_mut()
+    }
+}
+
+/// A single step of an optic, such as [`Dereference`] or [`ResultOk`], added to an optic with
+/// [`Optic::perform`].
+///
+/// This trait gives the output shape for an input shape, and [`OperationTarget`] implements the
+/// step. If the step is the same for both paths a single `OperationTarget` impl covers them, as
+/// for [`ResultOk`]. Otherwise implement it for both the `Read` and `Mut` forms of the shape, i.e
+/// `&'read T` and `&'write mut T`, as for [`Dereference`].
+///
+/// Type errors between the two traits only show up once the operation is performed.
+///
+/// ```rust
+/// # use natrix::prelude::*;
+/// # use natrix::lens;
+/// #[derive(Clone, Copy)]
+/// struct AddError(&'static str);
+///
+/// impl<T: lens::Shape> lens::Operation<Option<T>> for AddError {
+///     type Output = Result<T, lens::Owned<&'static str>>;
+/// }
+///
+/// impl<T> lens::OperationTarget<AddError, Result<T, &'static str>> for Option<T> {
+///     fn execute(self, op: &AddError) -> Result<T, &'static str> {
+///         self.ok_or(op.0)
+///     }
+/// }
+///
+/// let my_optic = lens::root::<Option<&'static i32>>().perform(AddError("oh no!"));
+/// assert_eq!(my_optic.get(Some(&10)), Ok(&10));
+/// assert_eq!(my_optic.get(None), Err("oh no!"));
+/// ```
+pub trait Operation<Input: Shape>: Copy + 'static {
+    /// The output of this operation given the given input shape.
     type Output: Shape;
 }
 
-/// A operation is a abstraction to make writing "uniform" optics easier, i.e optics whos `get` and
-/// `get_mut` paths are identical only differing in how some generics are specialized.
+/// Implementation of a [`Operation`], this trait has a slightly unusual generic form in order to
+/// make rust be able to reason about bounds using it.
 ///
-/// This is used for example for [`Into::into`], [`Result::ok`], etc.
-pub trait Operation<Input> {
-    /// The output of this operation on the given input.
-    type Output;
-
-    fn execute(&self, value: Input) -> Self::Output;
+/// The first generic is the operation, the output generic is the output of the operation for the
+/// given `Self` type. `Self` should be some generic version of `Input` in `Operation`, and `Output`
+/// a generic version of `Operation::Output`.
+pub trait OperationTarget<Operation, Output> {
+    /// Perform the operation on this element, in general the `op` argument will be a ignored ZST,
+    /// but it is also possible for a operation to contain some state.
+    fn execute(self, op: &Operation) -> Output;
 }
 
-impl<Input, Op> Optic<Input> for Op
+/// The `Optic` that performs a single `Operation`, usually constructed using
+/// [`Optic::perform`].
+#[derive(Debug, Clone, Copy)]
+pub struct OperationOptic<Op>(pub Op);
+
+impl<Input, Op> Optic<Input> for OperationOptic<Op>
 where
     Input: Shape,
-    Op: OperationOutput<Input>,
-    Op: for<'read> Operation<
-            Input::Read<'read>,
-            Output = <<Op as OperationOutput<Input>>::Output as Shape>::Read<'read>,
-        >,
+    Op: Operation<Input>,
+    for<'read> Input::Read<'read>:
+        OperationTarget<Op, <<Op as Operation<Input>>::Output as Shape>::Read<'read>>,
+    for<'write> Input::Mut<'write>:
+        OperationTarget<Op, <<Op as Operation<Input>>::Output as Shape>::Mut<'write>>,
 {
-}
+    type Output = <Op as Operation<Input>>::Output;
 
-/// Optic that calls [`Result::ok`]
-#[derive(Debug, Clone, Copy)]
-pub struct ResultOk;
+    #[inline]
+    fn get<'read>(
+        &self,
+        value: <Input as Shape>::Read<'read>,
+    ) -> <Self::Output as Shape>::Read<'read> {
+        value.execute(&self.0)
+    }
 
-impl<O: Shape, E: Shape> OperationOutput<Result<O, E>> for ResultOk {
-    type Output = Option<O>;
-}
-
-impl<O, E> Operation<Result<O, E>> for ResultOk {
-    type Output = Option<O>;
-
-    fn execute(&self, value: Result<O, E>) -> Self::Output {
-        value.ok()
+    #[inline]
+    fn get_mut<'write>(
+        &self,
+        value: <Input as Shape>::Mut<'write>,
+    ) -> <Self::Output as Shape>::Mut<'write> {
+        value.execute(&self.0)
     }
 }
 
-/// Optic for calling `.into`.
+/// Internal operation for `.then_into` that calls `Into::into`, converting to the shape `T`.
 #[derive(Debug)]
-#[must_use = "Lenses do nothing if not called"]
-pub struct IntoOptic<T>(PhantomData<T>);
-impl<T> Copy for IntoOptic<T> {}
-impl<T> Clone for IntoOptic<T> {
+pub struct Convert<T>(PhantomData<T>);
+impl<T> Copy for Convert<T> {}
+impl<T> Clone for Convert<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<S, T> Optic<S> for IntoOptic<T>
-where
-    S: Shape,
-    T: Shape + 'static,
-    for<'read> T::Read<'read>: From<S::Read<'read>>,
-    for<'write> T::Mut<'write>: From<S::Mut<'write>>,
-{
+impl<S: Shape, T: Shape + 'static> Operation<S> for Convert<T> {
     type Output = T;
+}
 
+impl<S, T, TShape> OperationTarget<Convert<TShape>, T> for S
+where
+    T: From<S>,
+{
     #[inline]
-    fn get<'read>(&self, value: <S as Shape>::Read<'read>) -> <Self::Output as Shape>::Read<'read> {
-        value.into()
-    }
-
-    #[inline]
-    fn get_mut<'write>(
-        &self,
-        value: <S as Shape>::Mut<'write>,
-    ) -> <Self::Output as Shape>::Mut<'write> {
-        value.into()
+    fn execute(self, _op: &Convert<TShape>) -> T {
+        self.into()
     }
 }
 
 /// Trait methods for optics returning a (owned) `Result`, for stuff like [`Result::ok`], [`Result::err`], etc.
 pub trait OpticResultExt<S: Shape, O: Shape, E: Shape>: Optic<S, Output = Result<O, E>> {
     /// Call [`Result::ok`].
-    fn ok(self) -> Chain<Self, ResultOk> {
-        self.then(ResultOk)
+    fn ok(self) -> Chain<Self, OperationOptic<ResultOk>> {
+        self.perform(ResultOk)
     }
 
     /// Call [`Result::err`]
-    fn err(self) -> Chain<Self, ResultErr> {
-        self.then(ResultErr)
+    fn err(self) -> Chain<Self, OperationOptic<ResultErr>> {
+        self.perform(ResultErr)
     }
 }
 impl<S: Shape, O: Shape, E: Shape, Op> OpticResultExt<S, O, E> for Op where
@@ -561,25 +611,33 @@ impl<S: Shape, O: Shape, E: Shape, Op> OpticResultExt<S, O, E> for Op where
 {
 }
 
-/// Optic that calls [`Result::err`]
+/// Operation for [`OpticResultExt::ok`] that calls [`Result::ok`].
+#[derive(Debug, Clone, Copy)]
+pub struct ResultOk;
+
+impl<O: Shape, E: Shape> Operation<Result<O, E>> for ResultOk {
+    type Output = Option<O>;
+}
+
+impl<O, E> OperationTarget<ResultOk, Option<O>> for Result<O, E> {
+    #[inline]
+    fn execute(self, _op: &ResultOk) -> Option<O> {
+        self.ok()
+    }
+}
+
+/// Operation for [`OpticResultExt::err`] that calls [`Result::err`].
 #[derive(Debug, Clone, Copy)]
 pub struct ResultErr;
 
-impl<O: Shape, E: Shape> Optic<Result<O, E>> for ResultErr {
+impl<O: Shape, E: Shape> Operation<Result<O, E>> for ResultErr {
     type Output = Option<E>;
+}
 
-    fn get<'read>(
-        &self,
-        value: <Result<O, E> as Shape>::Read<'read>,
-    ) -> <Self::Output as Shape>::Read<'read> {
-        value.err()
-    }
-
-    fn get_mut<'write>(
-        &self,
-        value: <Result<O, E> as Shape>::Mut<'write>,
-    ) -> <Self::Output as Shape>::Mut<'write> {
-        value.err()
+impl<O, E> OperationTarget<ResultErr, Option<E>> for Result<O, E> {
+    #[inline]
+    fn execute(self, _op: &ResultErr) -> Option<E> {
+        self.err()
     }
 }
 
@@ -662,6 +720,20 @@ mod tests {
         assert_eq!(lens.get(&value), "viv");
         lens.get_mut(&mut value).make_ascii_uppercase();
         assert_eq!(lens.get(&value), "VIV");
+    }
+
+    #[test]
+    fn project_works() {
+        let optic = super::root::<&Option<i32>>().project();
+        assert_optic::<&Option<i32>, Option<&i32>>(optic);
+
+        let mut value = Some(10);
+        assert_eq!(optic.get(&value), Some(&10));
+        *optic
+            .get_mut(&mut value)
+            .expect("Given Some should return Some") = 20;
+        assert_eq!(value, Some(20));
+        assert_eq!(optic.get(&None), None);
     }
 
     #[test]
