@@ -1,7 +1,7 @@
 import "./core.snek" as core;
 import "@/rust.snek" as rust;
 
-base = rust::stable
+base = rust::nightly
     > rust::WithBinstall("mdbook")
     > rust::WithBinstall("mdbook-rustdoc-links");
 
