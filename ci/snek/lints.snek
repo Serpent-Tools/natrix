@@ -24,7 +24,7 @@ export minimal_versions = rust::nightly
     > rust::Chef(core::source_code, "cargo minimal-versions check --package natrix --direct --all-features")
     > Exec("cargo minimal-versions check --package natrix --direct --all-features");
 
-export docs = rust::stable
+export docs = rust::nightly
     > rust::Chef(core::source_code, "cargo doc --no-deps --all-features")
     > Env("RUSTDOCFLAGS", "-Dwarnings")
     > Exec("cargo doc --no-deps --all-features")

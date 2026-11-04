@@ -173,10 +173,77 @@ There are plenty of other methods you can find in the [`lens`](natrix::lens) mod
 | `&Result<i32, String>` | `.project()` | `Result<&i32, &String>` |
 | `&Signal<Option<i32>>` | `.project()` | `Option<&i32>` | 
 | `&ThirdParty` | `.ref_map(\|val\| val.foo(), \|val\| val.foo_mut())` | `&Foo` |
-| `&T` | `.into::<Option<&T>>()` | `Option<&T>`  |
+| `&T` | `.then_into::<Option<&T>>()` | `Option<&T>`  |
 | `Result<&i32, &String>` | `.ok()` | `Option<&i32>` |
 | `Result<&i32, &String>` | `.err()` | `Option<&String>` |
 
+
+## Custom operations
+An [`Operation`](natrix::lens::Operation) is a single step of an optic, such as `.deref()` or `.ok()`.
+You can write your own and add it to an optic with [`.perform`](natrix::lens::Optic::perform).
+
+An operation is two traits.
+[`Operation`](natrix::lens::Operation) gives the output shape for an input shape.
+[`OperationTarget`](natrix::lens::OperationTarget) implements the step, with `Self` as the input value and the second generic as the output value.
+
+If the step is the same for the read and mut paths, one `OperationTarget` impl covers both:
+```rust
+# extern crate natrix;
+# use natrix::prelude::*;
+# use natrix::lens;
+#[derive(Clone, Copy)]
+struct AddError(&'static str);
+
+impl<T: lens::Shape> lens::Operation<Option<T>> for AddError {
+    type Output = Result<T, lens::Owned<&'static str>>;
+}
+
+impl<T> lens::OperationTarget<AddError, Result<T, &'static str>> for Option<T> {
+    fn execute(self, op: &AddError) -> Result<T, &'static str> {
+        self.ok_or(op.0)
+    }
+}
+
+let my_optic = lens::root::<Option<&'static i32>>().perform(AddError("oh no!"));
+assert_eq!(my_optic.get(Some(&10)), Ok(&10));
+assert_eq!(my_optic.get(None), Err("oh no!"));
+```
+
+Otherwise implement it once for `&T` and once for `&mut T`:
+```rust
+# extern crate natrix;
+# use natrix::prelude::*;
+# use natrix::lens;
+#[derive(Clone, Copy)]
+struct First;
+
+impl<T: 'static> lens::Operation<&'static Vec<T>> for First {
+    type Output = Option<&'static T>;
+}
+
+impl<'read, T> lens::OperationTarget<First, Option<&'read T>> for &'read Vec<T> {
+    fn execute(self, _op: &First) -> Option<&'read T> {
+        self.first()
+    }
+}
+
+impl<'write, T> lens::OperationTarget<First, Option<&'write mut T>> for &'write mut Vec<T> {
+    fn execute(self, _op: &First) -> Option<&'write mut T> {
+        self.first_mut()
+    }
+}
+
+let first = lens::root::<&'static Vec<i32>>().perform(First);
+let mut values = vec![1, 2, 3];
+*first.get_mut(&mut values).expect("values is not empty") = 10;
+assert_eq!(first.get(&values), Some(&10));
+```
+
+> [!WARNING]
+> The read and mut implementations must point to the same location, natrix can not check this for you.
+
+> [!WARNING]
+> Type errors between `Operation` and `OperationTarget` only show up once the operation is performed, so test each operation with `.perform`.
 
 ## Best Practices
 
@@ -196,3 +263,4 @@ As this allows the value to be a constant, or even computed.
 
 ### Use `Owned` in composition where possible.
 If you are taking say a `Result` and only need mutable access to the `Ok` variant consider taking a `Owned` for the error variant for more flexibility.
+

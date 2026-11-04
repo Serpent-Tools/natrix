@@ -1,7 +1,7 @@
 import "./core.snek" as core;
 import "@/rust.snek" as rust;
 
-native_test_base = rust::stable 
+native_test_base = rust::nightly
     > rust::Chef(core::source_code, "cargo test --all-features && cargo test --all-features --package natrix");
 
 export native_tests =  native_test_base

@@ -4,7 +4,7 @@
     reason = "The whole point of guards is doing unwraps internally."
 )]
 
-use crate::lens::{Chain, Optic, ProjectOptic, Projectable, Shape};
+use crate::lens::{Chain, Lens, OperationOptic, Optic, Project, Projectable, Shape};
 use crate::reactivity::State;
 use crate::reactivity::context::RenderCtx;
 
@@ -195,7 +195,7 @@ where
 {
     type Discriminant = <T::Result as Guardable<S>>::Discriminant;
     type GuardResult<O>
-        = <T::Result as Guardable<S>>::GuardResult<Chain<O, ProjectOptic>>
+        = <T::Result as Guardable<S>>::GuardResult<Chain<O, OperationOptic<Project>>>
     where
         O: Optic<&'static S, Output = Self>;
 
@@ -209,7 +209,7 @@ where
     where
         O: Optic<&'static S, Output = Self>,
     {
-        <T::Result as Guardable<S>>::guard(discriminant, Chain(optic, ProjectOptic))
+        <T::Result as Guardable<S>>::guard(discriminant, optic.project())
     }
 }
 
