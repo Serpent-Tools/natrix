@@ -368,7 +368,6 @@ macro_rules! elements {
 
                 #[doc = "<https://developer.mozilla.org/docs/Web/HTML/Reference/Elements/" $name ">"]
                 #[inline]
-                #[expect(clippy::allow_attributes, reason = "not all macro calls trigger it")]
                 #[allow(clippy::min_ident_chars, reason = "html tags")]
                 pub fn $name<C: State>() -> HtmlElement<C, [< Tag $name:camel >]> {
                     HtmlElement::new(stringify!($name))
