@@ -59,7 +59,7 @@ This is why optics provide [`.try_get`](natrix::lens::Optic::try_get), which ret
 ```rust
 # extern crate natrix;
 # use natrix::prelude::*;
-fn use_u8<S: State>(subs: impl Lens<&'static S, Target = u8>) -> impl Element<S> {
+fn use_u8<S: State>(subs: impl Optic<&'static S, Output = &'static u8>) -> impl Element<S> {
     e::button().on::<events::Click>(move |mut ctx: EventCtx<S>, _| {
         ctx.use_async(async move |ctx| {
             ctx.update(move |mut ctx| {

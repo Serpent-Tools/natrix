@@ -2,6 +2,8 @@ import "./core.snek" as core;
 import "@/rust.snek" as rust;
 
 base = rust::nightly
+    // `mdbook test -L` and mdbook-rustdoc-links need dependency rlibs in `target/debug/deps`.
+    > Env("CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT", "false")
     > rust::WithBinstall("mdbook")
     > rust::WithBinstall("mdbook-rustdoc-links");
 
