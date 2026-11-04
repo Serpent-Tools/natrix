@@ -88,7 +88,7 @@ fn render() -> impl Element<App> {
 
 ### `project`-ing signals
 Signals containing a `State` implement [`Projectable`](natrix::lens::Projectable), which allows accessing an inner value of a `Option`/`Result` without triggering re-renders for the entire inner value.
-This can be used via the [`.project`](natrix::lens::Lens::project) method on optics, as well as the [`.project_mut`](natrix::lens::Projectable::project_mut) method on signals themselves.
+This can be used via the [`.project`](natrix::lens::Optic::project) method on optics, as well as the [`.project_mut`](natrix::lens::Projectable::project_mut) method on signals themselves.
 Guards also make use of this, so `ctx.guard` works directly on a `Signal<Option<User>>` (where `User` is a `State`), as seen below.
 
 ```rust

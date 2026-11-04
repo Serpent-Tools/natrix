@@ -138,7 +138,7 @@ fn render_app() -> impl Element<App> {
 ## Generic state access.
 What if you want a more reusable component, lets say a slider?
 Pure rust closures dont allow for combined read and mut paths, so natrix uses [`Optic`](natrix::lens::Optic)s, see the [Optics Chapter](lens.md) for detailed docs on them.
-[`Lens`](natrix::lens::Lens) is the most common form of optic, one that outputs a reference, and since optics are `Copy` they can be moved into as many closures as you need.
+The most common form of optic is one that outputs a reference, and since optics are `Copy` they can be moved into as many closures as you need.
 
 ```rust
 # extern crate natrix;
@@ -150,17 +150,9 @@ struct App {
     second: Signal<u8>,
 }
 
-impl App {
-    fn increment_both(&mut self) {
-        self.first += 1;
-        self.second += 1;
-    }
-}
-
-fn counter(value: impl Lens<&'static App, Target = u8>) -> impl Element<App> {
+fn counter(value: impl Optic<&'static App, Output = &'static u8>) -> impl Element<App> {
     e::div()
         .child(e::button().text("-").on::<events::Click>(move |mut ctx: EventCtx<App>, _| {
-            ctx.increment_both();
             *value.get_mut(&mut ctx) -= 1;
         }))
         .text(move |mut ctx: RenderCtx<App>| *value.get(&ctx))
@@ -183,7 +175,7 @@ If you are writing a component library you naturally wont know the state, then y
 # extern crate natrix;
 # use natrix::prelude::*;
 
-fn counter<S: State>(value: impl Lens<&'static S, Target = u8>) -> impl Element<S> {
+fn counter<S: State>(value: impl Optic<&'static S, Output = &'static u8>) -> impl Element<S> {
     e::div()
         .child(e::button().text("-").on::<events::Click>(move |mut ctx: EventCtx<S>, _| {
             *value.get_mut(&mut ctx) -= 1;
@@ -207,7 +199,7 @@ mod my_library {
         fn get_language(&self) -> &'static str;
     }
 
-    pub fn greeting<S>(name: impl Lens<&'static S, Target = str>) -> impl Element<S>
+    pub fn greeting<S>(name: impl Optic<&'static S, Output = &'static str>) -> impl Element<S>
         where S: State + HasLanguage
     {
         e::div()

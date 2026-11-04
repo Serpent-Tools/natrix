@@ -24,21 +24,6 @@ fn counter(value: impl Optic<&'static App, Output = &'static u8>) -> impl Elemen
 The generic parameter is the input [`Shape`](natrix::lens::Shape), and `Output` is the output shape.
 `&'static T` is the shape of a plain reference, which is specialized to `&T` or `&mut T` depending on which path is used.
 
-### `Lens`
-The [`Lens`](natrix::lens::Lens) trait is implemented for every optic that outputs a reference, and is the most common bound you will write.
-`impl Lens<&'static App, Target = u8>` is equivalent to the bound above.
-
-```rust
-# extern crate natrix;
-# use natrix::prelude::*;
-# #[derive(State)]
-# struct App;
-fn counter(value: impl Lens<&'static App, Target = u8>) -> impl Element<App> {
-    /* ... */
-#   e::div()
-}
-```
-
 ### `.get`/`.get_mut`
 Optics are executed using [`.get`](natrix::lens::Optic::get) for the read path and [`.get_mut`](natrix::lens::Optic::get_mut) for the mut path.
 Optics are `Copy`, so they can be moved into as many closures as you need.
@@ -48,7 +33,7 @@ Optics are `Copy`, so they can be moved into as many closures as you need.
 # use natrix::prelude::*;
 # #[derive(State)]
 # struct App;
-fn counter(value: impl Lens<&'static App, Target = u8>) -> impl Element<App> {
+fn counter(value: impl Optic<&'static App, Output = &'static u8>) -> impl Element<App> {
     e::button()
         .text(move |mut ctx: RenderCtx<App>| *value.get(&ctx))
         .on::<events::Click>(move |mut ctx: EventCtx<App>, _| {
@@ -68,7 +53,7 @@ struct App {
     value: Signal<u8>,
 }
 
-fn counter(value: impl Lens<&'static App, Target = u8>) -> impl Element<App> {
+fn counter(value: impl Optic<&'static App, Output = &'static u8>) -> impl Element<App> {
     /* ... */
 #   e::div()
 }
@@ -101,11 +86,11 @@ let book2_name = field!(App, .book2).then(book_to_name);
 ```
 
 ### `.deref`
-Naturally you will often hit `Signal` in your access chains, [`.deref`](natrix::lens::Lens::deref) can be used if the value implements both `Deref` and `DerefMut`, which `Signal` does.
+Naturally you will often hit `Signal` in your access chains, [`.deref`](natrix::lens::Optic::deref) can be used if the value implements both `Deref` and `DerefMut`, which `Signal` does.
 Or for example if you have a `String` and a component wants `&str`.
 
 ### `.ref_map`
-The [`.ref_map`](natrix::lens::Lens::ref_map) method takes two closures, a read and a write one.
+The [`.ref_map`](natrix::lens::Optic::ref_map) method takes two closures, a read and a write one.
 Generally you would only need to use this if natrix doesn't already provide an optic for the operation you wish to perform, for example getters on a third party type.
 ```rust
 # extern crate natrix;
@@ -131,7 +116,7 @@ let book_name = root::<&Book>().ref_map(Book::name, Book::name_mut);
 > The two closures must point to the same location, natrix can not check this for you.
 
 ### `.project`
-Often it can be useful to transform from `&Option<T>` to `Option<&T>`, this is where [`.project`](natrix::lens::Lens::project) and the [`Projectable`](natrix::lens::Projectable) trait come in.
+Often it can be useful to transform from `&Option<T>` to `Option<&T>`, this is where [`.project`](natrix::lens::Optic::project) and the [`Projectable`](natrix::lens::Projectable) trait come in.
 For example if a component wants an `impl Optic<&'static App, Output = Option<&'static u8>>` and you have a `Signal<Option<u8>>` you can use `field!(App, .value).deref().project()`.
 
 `Signal` also implements `Projectable` when it contains a `State`, see [Projecting signals](state.md#project-ing-signals).
@@ -143,39 +128,6 @@ The issue here is that due to limitations this is not a valid shape as `String` 
 ### `.try_get`
 [`.try_get`](natrix::lens::Optic::try_get) runs the mut path, but returns `None` if any part of the chain fails, such as a [guard](reactivity.md#guards---handling-optionresult) whose value is no longer present.
 This must be used in async code, see [the async chapter](async-components.md#optics).
-
-## Cheatsheets
-### `Shape`
-| `Output = ` | `get` | `get_mut` | 
-| :---: | :---: | :---: |
-| `&'static i32` | `&i32` | `&mut i32` | 
-| `&'static T` | `&T` | `&mut T` |
-| `Option<&'static T>` | `Option<&T>` | `Option<&mut T>` | 
-| `Result<&'static T, &'static E>` | `Result<&T, &E>` | `Result<&mut T, &mut E>` |
-| `Owned<T>` | `T` | `T` | 
-| `Result<&'static T, Owned<E>>` | `Result<&T, E>` | `Result<&mut T, E>` | 
-| `&'static &'static T` | `&&'static T` | `&mut &'static T` |
-| `Owned<&'static T>` | `&'static T` | `&'static T` |
-
-
-### Methods
-There are plenty of other methods you can find in the [`lens`](natrix::lens) module, this table lists some of the common shapes and methods.
-
-> [!NOTE]
-> This table will leave out `'static` for shortness
-
-| `Output = ` | method | `Output = ` |
-| :---: | :---: | :---: |
-| `&Book` | `.then(field!(Book, .name))` | `&String` | 
-| `&String` | `.deref()` | `&str` |
-| `&Signal<i32>` | `.deref()` | `&i32` |
-| `&Option<i32>` | `.project()` | `Option<&i32>` |
-| `&Result<i32, String>` | `.project()` | `Result<&i32, &String>` |
-| `&Signal<Option<i32>>` | `.project()` | `Option<&i32>` | 
-| `&ThirdParty` | `.ref_map(\|val\| val.foo(), \|val\| val.foo_mut())` | `&Foo` |
-| `&T` | `.then_into::<Option<&T>>()` | `Option<&T>`  |
-| `Result<&i32, &String>` | `.ok()` | `Option<&i32>` |
-| `Result<&i32, &String>` | `.err()` | `Option<&String>` |
 
 
 ## Custom operations
@@ -244,6 +196,54 @@ assert_eq!(first.get(&values), Some(&10));
 
 > [!WARNING]
 > Type errors between `Operation` and `OperationTarget` only show up once the operation is performed, so test each operation with `.perform`.
+
+## Cheatsheets
+### `Shape`
+| `Output = ` | `get` | `get_mut` | 
+| :---: | :---: | :---: |
+| `&'static i32` | `&i32` | `&mut i32` | 
+| `&'static T` | `&T` | `&mut T` |
+| `Option<&'static T>` | `Option<&T>` | `Option<&mut T>` | 
+| `Result<&'static T, &'static E>` | `Result<&T, &E>` | `Result<&mut T, &mut E>` |
+| `Owned<T>` | `T` | `T` | 
+| `Result<&'static T, Owned<E>>` | `Result<&T, E>` | `Result<&mut T, E>` | 
+| `&'static &'static T` | `&&'static T` | `&mut &'static T` |
+| `Owned<&'static T>` | `&'static T` | `&'static T` |
+
+
+### Methods
+There are plenty of other methods you can find in the [`lens`](natrix::lens) module, this table lists some of the common shapes and methods.
+
+> [!NOTE]
+> This table will leave out `'static` for shortness
+
+| `Output = ` | method | `Output = ` |
+| :---: | :---: | :---: |
+| `&Book` | `.then(field!(Book, .name))` | `&String` | 
+| `&String` | `.deref()` | `&str` |
+| `&Signal<i32>` | `.deref()` | `&i32` |
+| `&Option<i32>` | `.project()` | `Option<&i32>` |
+| `&Result<i32, String>` | `.project()` | `Result<&i32, &String>` |
+| `&Signal<Option<i32>>` | `.project()` | `Option<&i32>` | 
+| `&ThirdParty` | `.ref_map(\|val\| val.foo(), \|val\| val.foo_mut())` | `&Foo` |
+| `&T` | `.then_into::<Option<&T>>()` | `Option<&T>`  |
+| `Result<&i32, &String>` | `.ok()` | `Option<&i32>` |
+| `Result<&i32, &String>` | `.err()` | `Option<&String>` |
+| `Result<&Book, &String>` | `.map(book_to_title)` | `Result<&String, &String>` |
+| `Result<&String, &Book>` | `.map_err(book_to_title)` | `Result<&String, &String>` |
+
+
+### Traits
+| Trait | Description | Alias for / similar to |
+| :---: | :--- | :---: |
+| `Shape` | Concrete type that describes a family of types |  |
+| `Optic<A, Output = B>` | The core trait, a path from one type to a sub part of that path, that supports read and mut. | `for<'a, Mut> Fn(A<'a, Mut>) -> B<'a, Mut>` |
+| `Projectable<Result = A>` | A type-native optic, primarily for "projecting" a reference into a container, similar to [`as_ref`](std::option::Option::as_ref) and friends | `Optic<&'static Self, Output = A>` |
+| `Operation<A, Output=B>` | A step in an optic, a generalization of `Into`, `Projectable`, `Deref`, etc. | `for<'a, Mut> Fn(A<'a, Mut>) -> B<'a, Mut>` |
+| `OperationTarget<A, B>` | The actual implementation of a operation, generic over the input type, *not shape* | `Fn(Self, A) -> B` |
+
+> [!NOTE]
+> The alias column is describing the general shape the trait emulates in other rust terms, not that the trait is a strict alias, for example `for<'a, Mut>` is not valid rust syntax.
 
 ## Best Practices
 

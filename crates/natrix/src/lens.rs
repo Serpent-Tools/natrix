@@ -4,7 +4,9 @@
 //! ```rust
 //! use natrix::prelude::*;
 //!
-//! fn increment_button<S: State>(value: impl Lens<&'static S, Target = u32>) -> impl Element<S> {
+//! fn increment_button<S: State>(
+//!     value: impl Optic<&'static S, Output = &'static u32>,
+//! ) -> impl Element<S> {
 //!     e::button()
 //!         .text(move |mut ctx: RenderCtx<S>| *value.get(&ctx))
 //!         .on::<events::Click>(move |mut ctx: EventCtx<S>, _| {
@@ -97,7 +99,7 @@ pub trait Optic<S: Shape>: Copy + Sized + 'static {
     fn get_mut<'write>(&self, value: S::Mut<'write>) -> <Self::Output as Shape>::Mut<'write>;
 
     /// Execute the `Mut` path of this optic, but return `None` if any part of the chain, mainly
-    /// guards, fail. This should be used for async or any other situation where a optic is sorted
+    /// guards, fail. This should be used for async or any other situation where a optic is stored
     /// outside the normal reactivity tree.
     #[must_use]
     #[inline]
@@ -140,8 +142,7 @@ pub trait Optic<S: Shape>: Copy + Sized + 'static {
 
     /// Chain a operation into this optic, for example `.perform(lens::ResultOk)`.
     ///
-    /// Most operations will have helper methods on various traits such as [`OpticResultExt::ok`]
-    /// for [`ResultOk`].
+    /// Most operations have helper methods, such as [`Optic::ok`] for [`ResultOk`].
     #[inline]
     fn perform<Op>(self, operation: Op) -> Chain<Self, OperationOptic<Op>>
     where
@@ -178,6 +179,105 @@ pub trait Optic<S: Shape>: Copy + Sized + 'static {
         for<'write> T::Mut<'write>: From<<Self::Output as Shape>::Mut<'write>>,
     {
         self.perform(Convert(PhantomData))
+    }
+
+    /// Call `.deref`/`.deref_mut` on the value, for example turning `&String` into `&str`, or
+    /// `&Signal<i32>` into `&i32` etc.
+    ///
+    /// WARN: This assumes that a type's `Deref` and `DerefMut` agree with each other, which for most
+    /// sensible types they will.
+    #[inline]
+    fn deref<T>(self) -> Chain<Self, OperationOptic<Dereference>>
+    where
+        T: ?Sized + Deref + DerefMut + 'static,
+        Self: Optic<S, Output = &'static T>,
+    {
+        self.perform(Dereference)
+    }
+
+    /// Create a optic that uses the given closures for its read and write paths.
+    /// This is useful for a lot of libraries or types that dont have direct support in natrix, for
+    /// example `some_lens.ref_map(|val| val.get_foo(), |val| val.get_foo_mut())`.
+    ///
+    /// A generic `.map` taking arbitrary closures is not possible due to trait/lifetime
+    /// limitations, so this only maps references.
+    ///
+    /// WARN: This requires you to manually uphold the optic "same path" invariant.
+    #[inline]
+    fn ref_map<T, R, Fread, Fmut>(
+        self,
+        read: Fread,
+        write: Fmut,
+    ) -> Chain<Self, OperationOptic<ReferenceMap<Fread, Fmut>>>
+    where
+        T: ?Sized + 'static,
+        R: ?Sized + 'static,
+        Self: Optic<S, Output = &'static T>,
+        Fread: for<'val> Fn(&'val T) -> &'val R + Copy + 'static,
+        Fmut: for<'val> Fn(&'val mut T) -> &'val mut R + Copy + 'static,
+    {
+        self.perform(ReferenceMap::new(read, write))
+    }
+
+    /// Project the output value, i.e turning `&Option<T>` into `Option<T>`, i.e a prism (in
+    /// addition to also working for result and other enums).
+    ///
+    /// This is very useful if a component needs a optional value and only plans to modify the inner
+    /// value, in other words `impl Optic<&'static S, Output=Option<&'static i32>>`, you can provide
+    /// such a optic to the component from a wide array of "source" shapes, if you have a
+    /// `Signal<Option<i32>>` then its as simple as `lens_to_field.deref().project()`.
+    ///
+    /// When the signal holds a `State` type, such as `Signal<Option<Book>>`, the signal itself can
+    /// be projected with `lens_to_field.project()`. Writes through the resulting optic never mark
+    /// the outer signal as changed, only the inner `Book` signals that are actually modified
+    /// trigger re-renders. See [`Signal::project_mut`](crate::reactivity::signal::Signal) for
+    /// details.
+    #[inline]
+    #[doc(alias = "as_ref")]
+    fn project<T>(self) -> Chain<Self, OperationOptic<Project>>
+    where
+        T: ?Sized + Projectable + 'static,
+        Self: Optic<S, Output = &'static T>,
+    {
+        self.perform(Project)
+    }
+
+    /// Call [`Result::ok`].
+    #[inline]
+    fn ok<O: Shape, E: Shape>(self) -> Chain<Self, OperationOptic<ResultOk>>
+    where
+        Self: Optic<S, Output = Result<O, E>>,
+    {
+        self.perform(ResultOk)
+    }
+
+    /// Call [`Result::err`].
+    #[inline]
+    fn err<O: Shape, E: Shape>(self) -> Chain<Self, OperationOptic<ResultErr>>
+    where
+        Self: Optic<S, Output = Result<O, E>>,
+    {
+        self.perform(ResultErr)
+    }
+
+    /// Call [`Result::map`] using the given optic.
+    #[inline]
+    fn map<O: Shape, E: Shape, Op>(self, optic: Op) -> Chain<Self, ResultMap<Op>>
+    where
+        Self: Optic<S, Output = Result<O, E>>,
+        Op: Optic<O>,
+    {
+        self.then(ResultMap(optic))
+    }
+
+    /// Call [`Result::map_err`] using the given optic.
+    #[inline]
+    fn map_err<O: Shape, E: Shape, Op>(self, optic: Op) -> Chain<Self, ResultMapErr<Op>>
+    where
+        Self: Optic<S, Output = Result<O, E>>,
+        Op: Optic<E>,
+    {
+        self.then(ResultMapErr(optic))
     }
 }
 
@@ -277,81 +377,6 @@ impl<'write, T: ?Sized + DerefMut> OperationTarget<Dereference, &'write mut T::T
     }
 }
 
-/// Trait methods for optics that return a reference, providing functionality such as
-/// dereferencing. This roughly matches the concept of a "lens" from traditional optics.
-///
-/// This also provides a `ref_map` method (sadly a generic `.map` is not possible on `Optic` due to
-/// trait/lifetime limitations.)
-pub trait Lens<S: Shape>: Optic<S, Output = &'static Self::Target> {
-    /// The target type of the reference, i.e the `T` in `&T`.
-    ///
-    /// In other words the output of the optic is `&Target`.
-    type Target: ?Sized + 'static;
-
-    /// Call `.deref`/`.deref_mut` on the value, for example turning `&String` into `&str`, or
-    /// `&Signal<i32>` into `&i32` etc.
-    ///
-    /// WARN: This assumes that a types `Deref` and `DerefMut` agree with eachother, which for most
-    /// sensible types they will.
-    #[inline]
-    fn deref(self) -> Chain<Self, OperationOptic<Dereference>>
-    where
-        Self::Target: Deref + DerefMut,
-    {
-        self.perform(Dereference)
-    }
-
-    /// Create a optic that uses the given closures for its read and write paths.
-    /// This is useful for a lot of libraries or types that dont have direct support in natrix, for
-    /// example `some_lens.ref_map(|val| val.get_foo(), |val| val.get_foo_mut())`.
-    ///
-    /// WARN: This requires you to manually ophold the optic "same path" invariant.
-    #[inline]
-    fn ref_map<R, Fread, Fmut>(
-        self,
-        read: Fread,
-        write: Fmut,
-    ) -> Chain<Self, OperationOptic<ReferenceMap<Fread, Fmut>>>
-    where
-        R: ?Sized + 'static,
-        Fread: for<'val> Fn(&'val Self::Target) -> &'val R + Copy + 'static,
-        Fmut: for<'val> Fn(&'val mut Self::Target) -> &'val mut R + Copy + 'static,
-    {
-        self.perform(ReferenceMap::new(read, write))
-    }
-
-    /// Project the output value, i.e turning `&Option<T>` into `Option<T>`, i.e a prism (in
-    /// addition to also working for result and other enums).
-    ///
-    /// This is very useful if a component needs a optional value and only plans to modify the inner
-    /// value, in other words `impl Optic<&'static S, Output=Option<&'static i32>>`, you can provide
-    /// such a optic to the component from a wide array of "source" shapes, if you have a
-    /// `Signal<Option<i32>>` then its as simple as `lens_to_field.deref().project()`.
-    ///
-    /// When the signal holds a `State` type, such as `Signal<Option<Book>>`, the signal itself can
-    /// be projected with `lens_to_field.project()`. Writes through the resulting optic never mark
-    /// the outer signal as changed, only the inner `Book` signals that are actually modified
-    /// trigger re-renders. See [`Signal::project_mut`](crate::reactivity::signal::Signal) for
-    /// details.
-    #[inline]
-    #[doc(alias = "as_ref")]
-    fn project(self) -> Chain<Self, OperationOptic<Project>>
-    where
-        Self::Target: Projectable,
-    {
-        self.perform(Project)
-    }
-}
-
-impl<S, T, O> Lens<S> for O
-where
-    S: Shape,
-    T: ?Sized + 'static,
-    O: Optic<S, Output = &'static T>,
-{
-    type Target = T;
-}
-
 /// The operation performed by `ref_map`.
 ///
 /// In most cases you dont need to construct this directly.
@@ -422,7 +447,7 @@ macro_rules! field {
 /// of themself containing reference. In other words the `as_ref` methods on `Option`/`Result`.
 ///
 /// This basically represents a "type-native" `Optic<&Self, Output = ...>`, which can be applied
-/// using `Lens::project`.
+/// using [`Optic::project`].
 pub trait Projectable {
     /// The output of the projection, analogous to `Optic::Output`
     type Result: Shape;
@@ -594,24 +619,7 @@ where
     }
 }
 
-/// Trait methods for optics returning a (owned) `Result`, for stuff like [`Result::ok`], [`Result::err`], etc.
-pub trait OpticResultExt<S: Shape, O: Shape, E: Shape>: Optic<S, Output = Result<O, E>> {
-    /// Call [`Result::ok`].
-    fn ok(self) -> Chain<Self, OperationOptic<ResultOk>> {
-        self.perform(ResultOk)
-    }
-
-    /// Call [`Result::err`]
-    fn err(self) -> Chain<Self, OperationOptic<ResultErr>> {
-        self.perform(ResultErr)
-    }
-}
-impl<S: Shape, O: Shape, E: Shape, Op> OpticResultExt<S, O, E> for Op where
-    Op: Optic<S, Output = Result<O, E>>
-{
-}
-
-/// Operation for [`OpticResultExt::ok`] that calls [`Result::ok`].
+/// Operation for [`Optic::ok`] that calls [`Result::ok`].
 #[derive(Debug, Clone, Copy)]
 pub struct ResultOk;
 
@@ -626,7 +634,7 @@ impl<O, E> OperationTarget<ResultOk, Option<O>> for Result<O, E> {
     }
 }
 
-/// Operation for [`OpticResultExt::err`] that calls [`Result::err`].
+/// Operation for [`Optic::err`] that calls [`Result::err`].
 #[derive(Debug, Clone, Copy)]
 pub struct ResultErr;
 
@@ -641,17 +649,126 @@ impl<O, E> OperationTarget<ResultErr, Option<E>> for Result<O, E> {
     }
 }
 
+/// `Optic` for [`Optic::map`] that calls [`Result::map`]
+#[derive(Debug, Clone, Copy)]
+pub struct ResultMap<Op>(Op);
+
+impl<O, E, Op> Optic<Result<O, E>> for ResultMap<Op>
+where
+    O: Shape,
+    E: Shape,
+    Op: Optic<O>,
+{
+    type Output = Result<Op::Output, E>;
+
+    #[inline]
+    fn get<'read>(
+        &self,
+        value: <Result<O, E> as Shape>::Read<'read>,
+    ) -> <Self::Output as Shape>::Read<'read> {
+        value.map(|ok| self.0.get(ok))
+    }
+
+    #[inline]
+    fn get_mut<'write>(
+        &self,
+        value: <Result<O, E> as Shape>::Mut<'write>,
+    ) -> <Self::Output as Shape>::Mut<'write> {
+        value.map(|ok| self.0.get_mut(ok))
+    }
+
+    #[inline]
+    fn try_get<'write>(
+        &self,
+        value: <Result<O, E> as Shape>::Mut<'write>,
+    ) -> Option<<Self::Output as Shape>::Mut<'write>> {
+        match value.map(|ok| self.0.try_get(ok)) {
+            Ok(Some(ok)) => Some(Ok(ok)),
+            Ok(None) => None,
+            Err(err) => Some(Err(err)),
+        }
+    }
+}
+
+/// `Optic` for [`Optic::map_err`] that calls [`Result::map_err`]
+#[derive(Debug, Clone, Copy)]
+pub struct ResultMapErr<Op>(Op);
+
+impl<O, E, Op> Optic<Result<O, E>> for ResultMapErr<Op>
+where
+    O: Shape,
+    E: Shape,
+    Op: Optic<E>,
+{
+    type Output = Result<O, Op::Output>;
+
+    fn get<'read>(
+        &self,
+        value: <Result<O, E> as Shape>::Read<'read>,
+    ) -> <Self::Output as Shape>::Read<'read> {
+        value.map_err(|err| self.0.get(err))
+    }
+
+    fn get_mut<'write>(
+        &self,
+        value: <Result<O, E> as Shape>::Mut<'write>,
+    ) -> <Self::Output as Shape>::Mut<'write> {
+        value.map_err(|err| self.0.get_mut(err))
+    }
+
+    fn try_get<'write>(
+        &self,
+        value: <Result<O, E> as Shape>::Mut<'write>,
+    ) -> Option<<Self::Output as Shape>::Mut<'write>> {
+        match value.map_err(|err| self.0.try_get(err)) {
+            Ok(ok) => Some(Ok(ok)),
+            Err(Some(err)) => Some(Err(err)),
+            Err(None) => None,
+        }
+    }
+}
+
 // TODO: `Option::map`
-// TODO: `Result::map`
-// TODO: `Result::map_err`
-// TODO: flatten
-// TODO: into split
-// TODO: from split
+// TODO: `Option::flatten`
+// TODO: `Result::flatten`
+// TODO: `Result::transpose`
+// TODO: `Option::transpose`
+// TODO: `Index` + `IndexMut`
 // TODO: map on owned
+// MAYBE: macro for defining operations.
+// MAYBE: Computed optic
 
 #[cfg(test)]
 mod tests {
-    use super::{Lens, Optic, OpticResultExt};
+    use super::Optic;
+
+    #[derive(Clone, Copy)]
+    struct FailingOptic;
+
+    impl<S: super::Shape> Optic<S> for FailingOptic {
+        type Output = S;
+
+        fn get<'read>(
+            &self,
+            value: <S as super::Shape>::Read<'read>,
+        ) -> <Self::Output as super::Shape>::Read<'read> {
+            value
+        }
+
+        fn get_mut<'write>(
+            &self,
+            value: <S as super::Shape>::Mut<'write>,
+        ) -> <Self::Output as super::Shape>::Mut<'write> {
+            value
+        }
+
+        fn try_get<'write>(
+            &self,
+            _value: <S as super::Shape>::Mut<'write>,
+        ) -> Option<<Self::Output as super::Shape>::Mut<'write>> {
+            None
+        }
+    }
 
     fn assert_optic<S: super::Shape, T: super::Shape>(_: impl Optic<S, Output = T>) {}
 
@@ -673,6 +790,15 @@ mod tests {
             *lens.get_mut(&mut value) = 10;
             assert_eq!(lens.get(&value), &10);
         }
+    }
+
+    #[test]
+    fn chain_respects_fail() {
+        let root = super::root::<&'static i32>();
+        let fail = FailingOptic;
+
+        assert_eq!(root.then(fail).try_get(&mut 10), None);
+        assert_eq!(fail.then(root).try_get(&mut 10), None);
     }
 
     #[test]
@@ -771,5 +897,83 @@ mod tests {
             .expect("Given Ok should return Some")
             .make_ascii_lowercase();
         assert_eq!(err_value, "hello");
+    }
+
+    #[test]
+    fn result_map() {
+        struct Book {
+            title: String,
+        }
+
+        let optic = super::root::<Result<&'static Book, super::Owned<&'static str>>>()
+            .map(field!(Book, .title));
+        assert_optic::<
+            Result<&'static Book, super::Owned<&'static str>>,
+            Result<&'static String, super::Owned<&'static str>>,
+        >(optic);
+
+        let mut book = Book {
+            title: String::from("Natrix"),
+        };
+        assert_eq!(optic.get(Ok(&book)), Ok(&"Natrix".to_owned()));
+        assert_eq!(optic.get(Err("Not Found")), Err("Not Found"));
+        assert_eq!(optic.get_mut(Err("Not Found")), Err("Not Found"));
+
+        *optic.get_mut(Ok(&mut book)).expect("Should be Ok") = String::from("Rust");
+        assert_eq!(book.title, "Rust");
+
+        assert_eq!(optic.try_get(Err("Not Found")), Some(Err("Not Found")));
+        assert_eq!(
+            optic.try_get(Ok(&mut book)),
+            Some(Ok(&mut "Rust".to_owned()))
+        );
+    }
+
+    #[test]
+    fn result_map_failing() {
+        let optic =
+            super::root::<Result<&'static i32, super::Owned<&'static str>>>().map(FailingOptic);
+
+        assert_eq!(optic.try_get(Ok(&mut 10)), None);
+        assert_eq!(optic.try_get(Err("Not Found")), Some(Err("Not Found")));
+    }
+
+    #[test]
+    fn result_map_err() {
+        struct Book {
+            title: String,
+        }
+
+        let optic = super::root::<Result<super::Owned<&'static str>, &'static Book>>()
+            .map_err(field!(Book, .title));
+        assert_optic::<
+            Result<super::Owned<&'static str>, &'static Book>,
+            Result<super::Owned<&'static str>, &'static String>,
+        >(optic);
+
+        let mut book = Book {
+            title: String::from("Natrix"),
+        };
+        assert_eq!(optic.get(Err(&book)), Err(&"Natrix".to_owned()));
+        assert_eq!(optic.get(Ok("Found")), Ok("Found"));
+        assert_eq!(optic.get_mut(Ok("Found")), Ok("Found"));
+
+        *optic.get_mut(Err(&mut book)).expect_err("Should be Err") = String::from("Rust");
+        assert_eq!(book.title, "Rust");
+
+        assert_eq!(optic.try_get(Ok("Found")), Some(Ok("Found")));
+        assert_eq!(
+            optic.try_get(Err(&mut book)),
+            Some(Err(&mut "Rust".to_owned()))
+        );
+    }
+
+    #[test]
+    fn result_map_err_failing() {
+        let optic =
+            super::root::<Result<super::Owned<&'static str>, &'static i32>>().map_err(FailingOptic);
+
+        assert_eq!(optic.try_get(Err(&mut 10)), None);
+        assert_eq!(optic.try_get(Ok("Found")), Some(Ok("Found")));
     }
 }
