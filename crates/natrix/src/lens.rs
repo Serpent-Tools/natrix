@@ -146,11 +146,14 @@ pub trait Optic<S: Shape>: Copy + Sized + 'static {
     #[inline]
     fn perform<Op>(self, operation: Op) -> Chain<Self, OperationOptic<Op>>
     where
-        Op: Operation<Self::Output>,
-        for<'read> <Self::Output as Shape>::Read<'read>:
-            OperationTarget<Op, <Op::Output as Shape>::Read<'read>>,
-        for<'write> <Self::Output as Shape>::Mut<'write>:
-            OperationTarget<Op, <Op::Output as Shape>::Mut<'write>>,
+        Op: Operation<Self::Output>
+            + for<'read> OperationExecution<
+                <Self::Output as Shape>::Read<'read>,
+                <Op::Output as Shape>::Read<'read>,
+            > + for<'write> OperationExecution<
+                <Self::Output as Shape>::Mut<'write>,
+                <Op::Output as Shape>::Mut<'write>,
+            >,
     {
         self.then(OperationOptic(operation))
     }
@@ -361,19 +364,19 @@ impl<T: ?Sized + Deref + 'static> Operation<&'static T> for Dereference {
     type Output = &'static T::Target;
 }
 
-impl<'read, T: ?Sized + Deref> OperationTarget<Dereference, &'read T::Target> for &'read T {
+impl<'read, T: ?Sized + Deref> OperationExecution<&'read T, &'read T::Target> for Dereference {
     #[inline]
-    fn execute(self, _op: &Dereference) -> &'read T::Target {
-        self
+    fn execute(&self, input: &'read T) -> &'read T::Target {
+        input
     }
 }
 
-impl<'write, T: ?Sized + DerefMut> OperationTarget<Dereference, &'write mut T::Target>
-    for &'write mut T
+impl<'write, T: ?Sized + DerefMut> OperationExecution<&'write mut T, &'write mut T::Target>
+    for Dereference
 {
     #[inline]
-    fn execute(self, _op: &Dereference) -> &'write mut T::Target {
-        self
+    fn execute(&self, input: &'write mut T) -> &'write mut T::Target {
+        input
     }
 }
 
@@ -407,24 +410,24 @@ where
 }
 
 impl<'read, Input: ?Sized, Output: ?Sized, FRead, FMut>
-    OperationTarget<ReferenceMap<FRead, FMut>, &'read Output> for &'read Input
+    OperationExecution<&'read Input, &'read Output> for ReferenceMap<FRead, FMut>
 where
     FRead: for<'val> Fn(&'val Input) -> &'val Output,
 {
     #[inline]
-    fn execute(self, op: &ReferenceMap<FRead, FMut>) -> &'read Output {
-        (op.0)(self)
+    fn execute(&self, input: &'read Input) -> &'read Output {
+        (self.0)(input)
     }
 }
 
 impl<'write, Input: ?Sized, Output: ?Sized, FRead, FMut>
-    OperationTarget<ReferenceMap<FRead, FMut>, &'write mut Output> for &'write mut Input
+    OperationExecution<&'write mut Input, &'write mut Output> for ReferenceMap<FRead, FMut>
 where
     FMut: for<'val> Fn(&'val mut Input) -> &'val mut Output,
 {
     #[inline]
-    fn execute(self, op: &ReferenceMap<FRead, FMut>) -> &'write mut Output {
-        (op.1)(self)
+    fn execute(&self, input: &'write mut Input) -> &'write mut Output {
+        (self.1)(input)
     }
 }
 
@@ -497,29 +500,29 @@ impl<T: ?Sized + Projectable> Operation<&'static T> for Project {
     type Output = T::Result;
 }
 
-impl<'read, T: ?Sized + Projectable> OperationTarget<Project, <T::Result as Shape>::Read<'read>>
-    for &'read T
+impl<'read, T: ?Sized + Projectable> OperationExecution<&'read T, <T::Result as Shape>::Read<'read>>
+    for Project
 {
     #[inline]
-    fn execute(self, _op: &Project) -> <T::Result as Shape>::Read<'read> {
-        self.project()
+    fn execute(&self, input: &'read T) -> <T::Result as Shape>::Read<'read> {
+        input.project()
     }
 }
 
-impl<'write, T: ?Sized + Projectable> OperationTarget<Project, <T::Result as Shape>::Mut<'write>>
-    for &'write mut T
+impl<'write, T: ?Sized + Projectable>
+    OperationExecution<&'write mut T, <T::Result as Shape>::Mut<'write>> for Project
 {
     #[inline]
-    fn execute(self, _op: &Project) -> <T::Result as Shape>::Mut<'write> {
-        self.project_mut()
+    fn execute(&self, input: &'write mut T) -> <T::Result as Shape>::Mut<'write> {
+        input.project_mut()
     }
 }
 
 /// A single step of an optic, such as [`Dereference`] or [`ResultOk`], added to an optic with
 /// [`Optic::perform`].
 ///
-/// This trait gives the output shape for an input shape, and [`OperationTarget`] implements the
-/// step. If the step is the same for both paths a single `OperationTarget` impl covers them, as
+/// This trait gives the output shape for an input shape, and [`OperationExecution`] implements the
+/// step. If the step is the same for both paths a single `OperationExecution` impl covers them, as
 /// for [`ResultOk`]. Otherwise implement it for both the `Read` and `Mut` forms of the shape, i.e
 /// `&'read T` and `&'write mut T`, as for [`Dereference`].
 ///
@@ -535,9 +538,9 @@ impl<'write, T: ?Sized + Projectable> OperationTarget<Project, <T::Result as Sha
 ///     type Output = Result<T, lens::Owned<&'static str>>;
 /// }
 ///
-/// impl<T> lens::OperationTarget<AddError, Result<T, &'static str>> for Option<T> {
-///     fn execute(self, op: &AddError) -> Result<T, &'static str> {
-///         self.ok_or(op.0)
+/// impl<T> lens::OperationExecution<Option<T>, Result<T, &'static str>> for AddError {
+///     fn execute(&self, input: Option<T>) -> Result<T, &'static str> {
+///         input.ok_or(self.0)
 ///     }
 /// }
 ///
@@ -550,16 +553,15 @@ pub trait Operation<Input: Shape>: Copy + 'static {
     type Output: Shape;
 }
 
-/// Implementation of a [`Operation`], this trait has a slightly unusual generic form in order to
-/// make rust be able to reason about bounds using it.
+/// Implementation of a [`Operation`], implemented on the operation itself.
 ///
-/// The first generic is the operation, the output generic is the output of the operation for the
-/// given `Self` type. `Self` should be some generic version of `Input` in `Operation`, and `Output`
-/// a generic version of `Operation::Output`.
-pub trait OperationTarget<Operation, Output> {
-    /// Perform the operation on this element, in general the `op` argument will be a ignored ZST,
+/// `Input` is a concrete value type rather than a shape, i.e a `Read` or `Mut` form of the shape
+/// given to `Operation`, such as `&'read T` for `&'static T`. `Output` is the matching form of
+/// `Operation::Output`.
+pub trait OperationExecution<Input, Output> {
+    /// Perform the operation on the given input, in general `self` will be a ZST,
     /// but it is also possible for a operation to contain some state.
-    fn execute(self, op: &Operation) -> Output;
+    fn execute(&self, input: Input) -> Output;
 }
 
 /// The `Optic` that performs a single `Operation`, usually constructed using
@@ -570,11 +572,14 @@ pub struct OperationOptic<Op>(pub Op);
 impl<Input, Op> Optic<Input> for OperationOptic<Op>
 where
     Input: Shape,
-    Op: Operation<Input>,
-    for<'read> Input::Read<'read>:
-        OperationTarget<Op, <<Op as Operation<Input>>::Output as Shape>::Read<'read>>,
-    for<'write> Input::Mut<'write>:
-        OperationTarget<Op, <<Op as Operation<Input>>::Output as Shape>::Mut<'write>>,
+    Op: Operation<Input>
+        + for<'read> OperationExecution<
+            Input::Read<'read>,
+            <<Op as Operation<Input>>::Output as Shape>::Read<'read>,
+        > + for<'write> OperationExecution<
+            Input::Mut<'write>,
+            <<Op as Operation<Input>>::Output as Shape>::Mut<'write>,
+        >,
 {
     type Output = <Op as Operation<Input>>::Output;
 
@@ -583,7 +588,7 @@ where
         &self,
         value: <Input as Shape>::Read<'read>,
     ) -> <Self::Output as Shape>::Read<'read> {
-        value.execute(&self.0)
+        self.0.execute(value)
     }
 
     #[inline]
@@ -591,7 +596,7 @@ where
         &self,
         value: <Input as Shape>::Mut<'write>,
     ) -> <Self::Output as Shape>::Mut<'write> {
-        value.execute(&self.0)
+        self.0.execute(value)
     }
 }
 
@@ -610,13 +615,13 @@ impl<S: Shape, T: Shape + 'static> Operation<S> for Convert<T> {
     type Output = T;
 }
 
-impl<S, T, TShape> OperationTarget<Convert<TShape>, T> for S
+impl<S, T, TShape> OperationExecution<S, T> for Convert<TShape>
 where
     T: From<S>,
 {
     #[inline]
-    fn execute(self, _op: &Convert<TShape>) -> T {
-        self.into()
+    fn execute(&self, input: S) -> T {
+        input.into()
     }
 }
 
@@ -628,10 +633,10 @@ impl<O: Shape, E: Shape> Operation<Result<O, E>> for ResultOk {
     type Output = Option<O>;
 }
 
-impl<O, E> OperationTarget<ResultOk, Option<O>> for Result<O, E> {
+impl<O, E> OperationExecution<Result<O, E>, Option<O>> for ResultOk {
     #[inline]
-    fn execute(self, _op: &ResultOk) -> Option<O> {
-        self.ok()
+    fn execute(&self, input: Result<O, E>) -> Option<O> {
+        input.ok()
     }
 }
 
@@ -643,10 +648,10 @@ impl<O: Shape, E: Shape> Operation<Result<O, E>> for ResultErr {
     type Output = Option<E>;
 }
 
-impl<O, E> OperationTarget<ResultErr, Option<E>> for Result<O, E> {
+impl<O, E> OperationExecution<Result<O, E>, Option<E>> for ResultErr {
     #[inline]
-    fn execute(self, _op: &ResultErr) -> Option<E> {
-        self.err()
+    fn execute(&self, input: Result<O, E>) -> Option<E> {
+        input.err()
     }
 }
 
