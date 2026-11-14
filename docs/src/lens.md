@@ -136,9 +136,9 @@ You can write your own and add it to an optic with [`.perform`](natrix::lens::Op
 
 An operation is two traits.
 [`Operation`](natrix::lens::Operation) gives the output shape for an input shape.
-[`OperationTarget`](natrix::lens::OperationTarget) implements the step, with `Self` as the input value and the second generic as the output value.
+[`OperationExecution`](natrix::lens::OperationExecution) implements the step on the operation itself, with the first generic as the input value and the second generic as the output value.
 
-If the step is the same for the read and mut paths, one `OperationTarget` impl covers both:
+If the step is the same for the read and mut paths, one `OperationExecution` impl covers both:
 ```rust
 # extern crate natrix;
 # use natrix::prelude::*;
@@ -150,9 +150,9 @@ impl<T: lens::Shape> lens::Operation<Option<T>> for AddError {
     type Output = Result<T, lens::Owned<&'static str>>;
 }
 
-impl<T> lens::OperationTarget<AddError, Result<T, &'static str>> for Option<T> {
-    fn execute(self, op: &AddError) -> Result<T, &'static str> {
-        self.ok_or(op.0)
+impl<T> lens::OperationExecution<Option<T>, Result<T, &'static str>> for AddError {
+    fn execute(&self, input: Option<T>) -> Result<T, &'static str> {
+        input.ok_or(self.0)
     }
 }
 
@@ -173,15 +173,15 @@ impl<T: 'static> lens::Operation<&'static Vec<T>> for First {
     type Output = Option<&'static T>;
 }
 
-impl<'read, T> lens::OperationTarget<First, Option<&'read T>> for &'read Vec<T> {
-    fn execute(self, _op: &First) -> Option<&'read T> {
-        self.first()
+impl<'read, T> lens::OperationExecution<&'read Vec<T>, Option<&'read T>> for First {
+    fn execute(&self, input: &'read Vec<T>) -> Option<&'read T> {
+        input.first()
     }
 }
 
-impl<'write, T> lens::OperationTarget<First, Option<&'write mut T>> for &'write mut Vec<T> {
-    fn execute(self, _op: &First) -> Option<&'write mut T> {
-        self.first_mut()
+impl<'write, T> lens::OperationExecution<&'write mut Vec<T>, Option<&'write mut T>> for First {
+    fn execute(&self, input: &'write mut Vec<T>) -> Option<&'write mut T> {
+        input.first_mut()
     }
 }
 
@@ -195,7 +195,7 @@ assert_eq!(first.get(&values), Some(&10));
 > The read and mut implementations must point to the same location, natrix can not check this for you.
 
 > [!WARNING]
-> Type errors between `Operation` and `OperationTarget` only show up once the operation is performed, so test each operation with `.perform`.
+> Type errors between `Operation` and `OperationExecution` only show up once the operation is performed, so test each operation with `.perform`.
 
 ## Cheatsheets
 ### `Shape`
@@ -240,7 +240,7 @@ There are plenty of other methods you can find in the [`lens`](natrix::lens) mod
 | `Optic<A, Output = B>` | The core trait, a path from one type to a sub part of that path, that supports read and mut. | `for<'a, Mut> Fn(A<'a, Mut>) -> B<'a, Mut>` |
 | `Projectable<Result = A>` | A type-native optic, primarily for "projecting" a reference into a container, similar to [`as_ref`](std::option::Option::as_ref) and friends | `Optic<&'static Self, Output = A>` |
 | `Operation<A, Output=B>` | A step in an optic, a generalization of `Into`, `Projectable`, `Deref`, etc. | `for<'a, Mut> Fn(A<'a, Mut>) -> B<'a, Mut>` |
-| `OperationTarget<A, B>` | The actual implementation of a operation, generic over the input type, *not shape* | `Fn(Self, A) -> B` |
+| `OperationExecution<A, B>` | The actual implementation of a operation, generic over the input type, *not shape* | `Fn(&Self, A) -> B` |
 
 > [!NOTE]
 > The alias column is describing the general shape the trait emulates in other rust terms, not that the trait is a strict alias, for example `for<'a, Mut>` is not valid rust syntax.
