@@ -1,33 +1,12 @@
 {
   "nodes": {
-    "fenix": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "rust-analyzer-src": "rust-analyzer-src"
-      },
-      "locked": {
-        "lastModified": 1793714087,
-        "narHash": "sha256-GBDA8xB+ebQAdyHNlp6kt01B47KHz7NjodAodNvzdAs=",
-        "owner": "nix-community",
-        "repo": "fenix",
-        "rev": "eb67cb2bdfa80d99e732754e23ad5262d72fe334",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "fenix",
-        "type": "github"
-      }
-    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1793726008,
-        "narHash": "sha256-jQp1wKvbwWdLBASTXkSi/VYmDJ5AbBi1WvcMt9HWJC8=",
+        "lastModified": 1794890597,
+        "narHash": "sha256-lME2lHoDHAaSHP3/okgiVoJ0icVEvsQH8LeU3We7tcc=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "1d060086d60cb76a40cf37109f979d88a5bd6396",
+        "rev": "04906337b6d53e8bb0eaf0470ae9f070a4d4eb55",
         "type": "github"
       },
       "original": {
@@ -39,26 +18,8 @@
     },
     "root": {
       "inputs": {
-        "fenix": "fenix",
         "nixpkgs": "nixpkgs",
         "serpentine": "serpentine"
-      }
-    },
-    "rust-analyzer-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1793645174,
-        "narHash": "sha256-zkOzFlIuBgp4SFeM2VH9r2cEpW7E5efuxHVFTC3CxzE=",
-        "owner": "rust-lang",
-        "repo": "rust-analyzer",
-        "rev": "beed142fed81382343d6028a4c730f66dcfd4740",
-        "type": "github"
-      },
-      "original": {
-        "owner": "rust-lang",
-        "ref": "nightly",
-        "repo": "rust-analyzer",
-        "type": "github"
       }
     },
     "serpentine": {
@@ -68,16 +29,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1793298452,
-        "narHash": "sha256-fEmQuZnsYlx4u/X1ky99OnkDkIUC0Ie6qjEVFDxLG4k=",
+        "lastModified": 1794931121,
+        "narHash": "sha256-19GQAv24vjOXNocQ5tlIYZrPvwDQQZblgetkQSSBYIY=",
         "owner": "Serpent-Tools",
         "repo": "serpentine",
-        "rev": "33ec98ee4d2d71352a05bed6b876d62cc82c2da1",
+        "rev": "a241ca6f146127a5e30f1378cdba13cadad4353f",
         "type": "github"
       },
       "original": {
         "owner": "Serpent-Tools",
-        "ref": "v1.0.4",
+        "ref": "v1.0.5",
         "repo": "serpentine",
         "type": "github"
       }
