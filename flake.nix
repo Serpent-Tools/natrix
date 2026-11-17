@@ -3,23 +3,14 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    fenix = {
-      url = "github:nix-community/fenix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     serpentine = {
-      url = "github:Serpent-Tools/serpentine/v1.0.4";
+      url = "github:Serpent-Tools/serpentine/v1.0.5";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
   outputs =
-    {
-      nixpkgs,
-      fenix,
-      serpentine,
-      ...
-    }:
+    { nixpkgs, serpentine, ... }:
     let
       systems = [
         "x86_64-linux"
@@ -29,22 +20,11 @@
       ];
       forAllSystems =
         function:
-        nixpkgs.lib.genAttrs systems (
-          system:
-          function (
-            import nixpkgs {
-              inherit system;
-              overlays = [
-                fenix.overlays.default
-                serpentine.overlays.default
-              ];
-            }
-          )
-        );
+        nixpkgs.lib.genAttrs systems (system: function system nixpkgs.legacyPackages.${system});
     in
     {
       devShells = forAllSystems (
-        pkgs:
+        system: pkgs:
         let
           wasm-bindgen-cli = pkgs.buildWasmBindgenCli rec {
             src = pkgs.fetchCrate {
@@ -62,26 +42,22 @@
         {
           default = pkgs.mkShell {
             packages = [
-              (pkgs.fenix.combine [
-                (pkgs.fenix.latest.withComponents [
-                  "cargo"
-                  "clippy"
-                  "rustc"
+              pkgs.cargo
+              pkgs.clippy
+              pkgs.rustc
+              pkgs.rust-analyzer
+              # `rustfmt.toml` sets options that are still nightly-only.
+              (pkgs.rustfmt.override { asNightly = true; })
 
-                  "rust-analyzer"
-                  "rustfmt"
-
-                  "rust-src"
-                ])
-                pkgs.fenix.targets.wasm32-unknown-unknown.latest.rust-std
-              ])
-              pkgs.serpentine
+              serpentine.packages.${system}.default
               pkgs.just
 
               wasm-bindgen-cli
               pkgs.binaryen
               pkgs.chromedriver
             ];
+
+            env.RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
           };
         }
       );
