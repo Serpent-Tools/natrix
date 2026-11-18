@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     serpentine = {
       url = "github:Serpent-Tools/serpentine/v1.0.5";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -10,7 +14,12 @@
   };
 
   outputs =
-    { nixpkgs, serpentine, ... }:
+    {
+      nixpkgs,
+      fenix,
+      serpentine,
+      ...
+    }:
     let
       systems = [
         "x86_64-linux"
@@ -26,6 +35,7 @@
       devShells = forAllSystems (
         system: pkgs:
         let
+          fenixPkgs = fenix.packages.${system};
           wasm-bindgen-cli = pkgs.buildWasmBindgenCli rec {
             src = pkgs.fetchCrate {
               pname = "wasm-bindgen-cli";
@@ -42,13 +52,19 @@
         {
           default = pkgs.mkShell {
             packages = [
-              pkgs.cargo
-              pkgs.clippy
-              pkgs.rustc
-              pkgs.rust-analyzer
-              # `rustfmt.toml` sets options that are still nightly-only.
-              (pkgs.rustfmt.override { asNightly = true; })
+              (fenixPkgs.combine [
+                (fenixPkgs.latest.withComponents [
+                  "cargo"
+                  "clippy"
+                  "rustc"
 
+                  "rust-analyzer"
+                  "rustfmt"
+
+                  "rust-src"
+                ])
+                fenixPkgs.targets.wasm32-unknown-unknown.latest.rust-std
+              ])
               serpentine.packages.${system}.default
               pkgs.just
 
@@ -56,8 +72,6 @@
               pkgs.binaryen
               pkgs.chromedriver
             ];
-
-            env.RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
           };
         }
       );
