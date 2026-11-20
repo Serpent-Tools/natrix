@@ -41,6 +41,11 @@ pub fn run_with_spinner(mut command: process::Command, spinner: ProgressBar) -> 
     let stderr = child.stderr.take().ok_or(anyhow!("Stderr gone"))?;
     let mut stdout = child.stdout.take().ok_or(anyhow!("stdout gone"))?;
 
+    let stdout_thread = std::thread::spawn(move || {
+        let mut result = String::new();
+        stdout.read_to_string(&mut result)?;
+        Ok::<_, anyhow::Error>(result)
+    });
     let stderr = BufReader::new(stderr);
 
     let mut full_output = String::new();
@@ -55,9 +60,9 @@ pub fn run_with_spinner(mut command: process::Command, spinner: ProgressBar) -> 
 
     if status.success() {
         spinner.finish_with_message("");
-
-        let mut result = String::new();
-        stdout.read_to_string(&mut result)?;
+        let result = stdout_thread
+            .join()
+            .map_err(|_err| anyhow::anyhow!("Failed to join thread"))??;
 
         Ok(result)
     } else {
