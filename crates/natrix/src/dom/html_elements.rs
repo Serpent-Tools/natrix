@@ -66,11 +66,11 @@ impl CanHaveChild for () {}
 #[non_exhaustive]
 pub struct HtmlElement<C: State, T = ()> {
     /// Dom element
-    element: web_sys::Element,
+    element: web_sys::HtmlElement,
     /// The deferred actions
     deferred: SmallVec<[DeferredFunc<C>; 2]>,
-    /// Phantom data
-    _phantom: PhantomData<T>,
+    /// Phantom data for holding the tag type
+    _tag_phantom: PhantomData<T>,
     /// List of attributes that are already set.
     #[cfg(debug_assertions)]
     seen_attributes: HashSet<&'static str>,
@@ -84,7 +84,10 @@ impl<C: State, T> HtmlElement<C, T> {
     ///
     /// All non-deprecated html elements have a helper function in this module
     pub fn new(tag: &'static str) -> Self {
-        let node = if let Ok(node) = get_document().create_element(intern(tag)) {
+        let node = if let Ok(node) = get_document()
+            .create_element(intern(tag))
+            .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().map_err(Into::into))
+        {
             node
         } else {
             log_or_panic!("Failed to create <{tag}>");
@@ -94,7 +97,7 @@ impl<C: State, T> HtmlElement<C, T> {
         Self {
             element: node,
             deferred: SmallVec::new(),
-            _phantom: PhantomData,
+            _tag_phantom: PhantomData,
             #[cfg(debug_assertions)]
             seen_attributes: HashSet::new(),
             #[cfg(debug_assertions)]
@@ -108,7 +111,7 @@ impl<C: State, T> HtmlElement<C, T> {
     /// WARN: reactive callbacks (`|ctx| ...`) have not been called at this point as such the
     /// attributes and child lists of the given element might not match its final state.
     #[must_use]
-    pub fn get_element(&self) -> &web_sys::Element {
+    pub fn get_element(&self) -> &web_sys::HtmlElement {
         &self.element
     }
 
@@ -129,7 +132,7 @@ impl<C: State, T> HtmlElement<C, T> {
             seen_attributes: self.seen_attributes,
             #[cfg(debug_assertions)]
             reactive_attributes: self.reactive_attributes,
-            _phantom: PhantomData,
+            _tag_phantom: PhantomData,
         }
     }
 
@@ -159,6 +162,7 @@ impl<C: State, T> HtmlElement<C, T> {
             let ctx_weak = Weak::clone(&ctx.this);
 
             let function: Box<dyn Fn(web_sys::Event) + 'static> = Box::new(move |event| {
+                log::trace!("Event handler '{}' start.", E::EVENT_NAME);
                 crate::panics::return_if_panic!();
 
                 let Ok(event) = event.dyn_into() else {
