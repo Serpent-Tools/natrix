@@ -84,7 +84,7 @@ pub fn wasm_bindgen(
             .arg("--remove-producers-section")
             .arg("--no-demangle");
     }
-    utils::run_with_spinner(command, utils::create_spinner("✍️ wasm_bindgen")?)?;
+    utils::run_with_spinner(command, utils::create_spinner("📝 wasm_bindgen")?)?;
 
     let js_file = config.dist.join(format!("{BINDGEN_OUTPUT_NAME}.js"));
 
@@ -96,7 +96,7 @@ pub fn wasm_bindgen(
 
 /// Minimize the given js file
 pub fn minimize_js(js_file: &PathBuf, mapping: RenameMap) -> Result<(), anyhow::Error> {
-    let spinner = utils::create_spinner("🗜️ Minimizing JS")?;
+    let spinner = utils::create_spinner("📦 Minimizing JS")?;
 
     let js_code = fs::read_to_string(js_file)?;
     let allocator = oxc::allocator::Allocator::new();
@@ -187,7 +187,7 @@ pub fn build_wasm(config: &options::BuildConfig) -> Result<PathBuf> {
         command.args(["--features", FEATURE_NO_SGG]);
     }
 
-    utils::run_with_spinner(command, utils::create_spinner("⚙️ wasm")?).context("Running cargo")?;
+    utils::run_with_spinner(command, utils::create_spinner("🔧 wasm")?).context("Running cargo")?;
 
     find_wasm(config).context("Finding wasm file")
 }
