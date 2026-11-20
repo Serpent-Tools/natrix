@@ -258,38 +258,30 @@ pub fn optimize_wasm(wasm_file: &PathBuf) -> Result<RenameMap, anyhow::Error> {
         "-Oz",
     ]);
 
-    command.stdout(process::Stdio::piped());
-
-    let mut child = command.spawn()?;
-    let stdout = child.stdout.take();
-    let result = child.wait()?.success();
+    let output = command.output()?;
 
     let mut mapping = HashMap::new();
+    let stdout = BufReader::new(output.stdout.as_slice());
+    let mut seen = HashSet::new();
+    'lines_loop: for line in stdout.lines() {
+        let line = line?;
+        if let Some((old, new)) = line.split_once(" => ") {
+            let old = old.trim();
+            let new = new.trim();
 
-    if let Some(stdout) = stdout {
-        let stdout = BufReader::new(stdout);
-
-        let mut seen = HashSet::new();
-        'lines_loop: for line in stdout.lines() {
-            let line = line?;
-            if let Some((old, new)) = line.split_once(" => ") {
-                let old = old.trim();
-                let new = new.trim();
-
-                if seen.contains(old) {
-                    break 'lines_loop;
-                }
-
-                // This is not a mistake
-                // The wasm-opt output is initially
-                // __Wasmbindgen_adjaijda => A
-                // ...
-                //
-                // Once the second optimization pass starts its
-                // A => A
-                seen.insert(<Box<str>>::from(new));
-                mapping.insert(old.into(), new.into());
+            if seen.contains(old) {
+                break 'lines_loop;
             }
+
+            // This is not a mistake
+            // The wasm-opt output is initially
+            // __Wasmbindgen_adjaijda => A
+            // ...
+            //
+            // Once the second optimization pass starts its
+            // A => A
+            seen.insert(<Box<str>>::from(new));
+            mapping.insert(old.into(), new.into());
         }
     }
 
@@ -301,9 +293,10 @@ pub fn optimize_wasm(wasm_file: &PathBuf) -> Result<RenameMap, anyhow::Error> {
     mapping.insert(format!("./{BINDGEN_OUTPUT_NAME}_bg.js").into(), "a".into());
 
     spinner.finish();
-    if !result {
+    if !output.status.success() {
         return Err(anyhow!(
-            "Failed to optimize\nYou might have a outdated wasm-opt version installed\nwe test against v123"
+            "Failed to optimize\nYou might have a outdated wasm-opt version installed\nwe test against v123\n\n{}",
+            String::from_utf8_lossy_owned(output.stderr)
         ));
     }
     Ok(RenameMap(mapping))
