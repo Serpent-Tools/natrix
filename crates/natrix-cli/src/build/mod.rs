@@ -44,39 +44,54 @@ pub fn build(config: &options::BuildConfig) -> Result<assets::AssetManifest> {
     std::fs::create_dir_all(&config.dist).context("Creating dist")?;
 
     let source_wasm_file = wasm_js::build_wasm(config).context("Building wasm")?;
-    let (wasm_file, js_file) = wasm_js::wasm_bindgen(config, &source_wasm_file)?;
-    if config.profile == options::BuildProfile::Release {
-        let rename_map = wasm_js::optimize_wasm(&wasm_file)?;
-        wasm_js::minimize_js(&js_file, rename_map)?;
-    }
 
-    let wasm_file = cache_bust_file(config, wasm_file)?;
-    let js_file = cache_bust_file(config, js_file)?;
+    // These steps depend on the wasm build's outputs, but not on one another. Run them together
+    // so asset copying and native CSS extraction can overlap wasm-bindgen and wasm optimization.
+    let (wasm_outputs, asset_manifest, raw_css) = run_parallel(
+        || -> Result<_> {
+            let (wasm_file, js_file) = wasm_js::wasm_bindgen(config, &source_wasm_file)?;
+            if config.profile == options::BuildProfile::Release {
+                let rename_map = wasm_js::optimize_wasm(&wasm_file)?;
+                wasm_js::minimize_js(&js_file, rename_map)?;
+            }
 
-    // Parse wasm file once for both sourcemap and CSS optimization
-    let wasm_parse_result = if config.profile == options::BuildProfile::Dev || config.ssg {
-        Some(wasm_parser::parse_wasm_file(&wasm_file)?)
-    } else {
-        None
-    };
+            let wasm_file = cache_bust_file(config, wasm_file)?;
+            let js_file = cache_bust_file(config, js_file)?;
 
-    if config.profile == options::BuildProfile::Dev {
-        uwuln!("🗺️ Generating source map", bright_blue);
-        let parse_result = wasm_parse_result
-            .as_ref()
-            .ok_or_else(|| anyhow!("Wasm parse result missing for sourcemap generation"))?;
-        sourcemap::create_sourcemap(&wasm_file, parse_result)?;
-    }
+            // Parse wasm file once for both sourcemap and CSS optimization.
+            let wasm_parse_result = if config.profile == options::BuildProfile::Dev || config.ssg {
+                Some(wasm_parser::parse_wasm_file(&wasm_file)?)
+            } else {
+                None
+            };
 
-    let asset_manifest = assets::collect_macro_output(config)?;
+            if config.profile == options::BuildProfile::Dev {
+                uwuln!("🗺️ Generating source map", bright_blue);
+                let parse_result = wasm_parse_result
+                    .as_ref()
+                    .ok_or_else(|| anyhow!("Wasm parse result missing for sourcemap generation"))?;
+                sourcemap::create_sourcemap(&wasm_file, parse_result)?;
+            }
 
-    let css_file = if config.ssg {
+            Ok((wasm_file, js_file, wasm_parse_result))
+        },
+        || assets::collect_macro_output(config),
+        || {
+            if config.ssg {
+                css::extract_css().map(Some)
+            } else {
+                Ok(None)
+            }
+        },
+    )?;
+
+    let (wasm_file, js_file, wasm_parse_result) = wasm_outputs;
+    let css_file = if let Some(raw_css) = raw_css {
         let parse_result = wasm_parse_result
             .as_ref()
             .ok_or_else(|| anyhow!("Wasm parse result missing for CSS optimization"))?;
-        let css_file = css::collect_css(config, parse_result)?;
-        let css_file = cache_bust_file(config, css_file)?;
-        Some(css_file)
+        let css_file = css::write_css(config, parse_result, raw_css)?;
+        Some(cache_bust_file(config, css_file)?)
     } else {
         None
     };
@@ -88,6 +103,76 @@ pub fn build(config: &options::BuildConfig) -> Result<assets::AssetManifest> {
     uwuln!(config.dist.display(), cyan);
 
     Ok(asset_manifest)
+}
+
+/// Run three independent build tasks at the same time and preserve task errors.
+fn run_parallel<A, B, C>(
+    first: impl FnOnce() -> Result<A> + Send,
+    second: impl FnOnce() -> Result<B> + Send,
+    third: impl FnOnce() -> Result<C> + Send,
+) -> Result<(A, B, C)>
+where
+    A: Send,
+    B: Send,
+    C: Send,
+{
+    std::thread::scope(|scope| {
+        let first = scope.spawn(first);
+        let second = scope.spawn(second);
+        let third = scope.spawn(third);
+
+        let first = first
+            .join()
+            .map_err(|_| anyhow!("Wasm build task panicked"))??;
+        let second = second
+            .join()
+            .map_err(|_| anyhow!("Asset collection task panicked"))??;
+        let third = third
+            .join()
+            .map_err(|_| anyhow!("CSS extraction task panicked"))??;
+
+        Ok((first, second, third))
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Condvar, Mutex};
+    use std::time::Duration;
+
+    use super::run_parallel;
+
+    #[test]
+    fn independent_build_tasks_start_concurrently() {
+        let started = Arc::new((Mutex::new(0_usize), Condvar::new()));
+        let task = || {
+            let started = Arc::clone(&started);
+            move || {
+                let (count, changed) = &*started;
+                let mut count = count
+                    .lock()
+                    .map_err(|_| anyhow::anyhow!("Start counter was poisoned"))?;
+                *count = count.saturating_add(1);
+                changed.notify_all();
+                let (count, timeout) = changed
+                    .wait_timeout_while(count, Duration::from_secs(2), |count| *count < 3)
+                    .map_err(|_| anyhow::anyhow!("Start counter was poisoned"))?;
+                if timeout.timed_out() {
+                    return Err(anyhow::anyhow!("Build tasks did not start concurrently"));
+                }
+                if *count == 3 {
+                    Ok(())
+                } else {
+                    Err(anyhow::anyhow!("Build task start count was corrupted"))
+                }
+            }
+        };
+
+        assert!(
+            run_parallel(task(), task(), task()).is_ok(),
+            "all independent tasks should overlap"
+        );
+    }
 }
 
 /// Generate the html file to be used
