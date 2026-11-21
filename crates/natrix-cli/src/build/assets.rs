@@ -42,8 +42,7 @@ pub fn copy_assets_to_dist(config: &options::BuildConfig, manifest: &AssetManife
     copies.sort_by(|(_, left_target), (_, right_target)| left_target.cmp(right_target));
 
     let workers = std::thread::available_parallelism()
-        .map(|parallelism| parallelism.get())
-        .unwrap_or(1)
+        .map_or(1, std::num::NonZeroUsize::get)
         .min(8);
     copy_files_parallel(&copies, workers, &|source, target| {
         fs::copy(source, target).map(|_| ())
@@ -134,6 +133,7 @@ pub fn get_macro_output_files(
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
     use std::sync::{Arc, Condvar, Mutex};
     use std::time::Duration;
 
@@ -144,7 +144,7 @@ mod tests {
         let started = Arc::new((Mutex::new(0_usize), Condvar::new()));
         let copy = {
             let started = Arc::clone(&started);
-            move |_, _| {
+            move |_: &Path, _: &Path| {
                 let (count, changed) = &*started;
                 let mut count = count.lock().expect("start counter mutex");
                 *count += 1;
