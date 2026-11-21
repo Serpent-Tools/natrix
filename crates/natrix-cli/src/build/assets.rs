@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::{MACRO_OUTPUT_DIR, options, utils};
 use crate::prelude::*;
@@ -34,16 +34,75 @@ pub fn collect_macro_output(config: &options::BuildConfig) -> Result<AssetManife
 /// Copy asset manifest to dist folder
 pub fn copy_assets_to_dist(config: &options::BuildConfig, manifest: &AssetManifest) -> Result<()> {
     let spinner = utils::create_spinner("📂 Copying Assets")?;
-    for (wanted_url, file) in &manifest.mapping {
-        let target_file = config.dist.join(wanted_url);
-        if let Err(err) = fs::copy(file, target_file) {
-            spinner.finish();
-            return Err(err.into());
-        }
-    }
+    let mut copies = manifest
+        .mapping
+        .iter()
+        .map(|(wanted_url, file)| (file.clone(), config.dist.join(wanted_url)))
+        .collect::<Vec<_>>();
+    copies.sort_by(|(_, left_target), (_, right_target)| left_target.cmp(right_target));
+
+    let workers = std::thread::available_parallelism()
+        .map_or(1, std::num::NonZeroUsize::get)
+        .min(8);
+    copy_files_parallel(&copies, workers, &|source, target| {
+        fs::copy(source, target).map(|_| ())
+    })?;
 
     spinner.finish();
     Ok(())
+}
+
+/// Copy independent assets concurrently, while joining every worker so failures are reported.
+fn copy_files_parallel<F>(
+    files: &[(PathBuf, PathBuf)],
+    thread_count: usize,
+    copy_file: &F,
+) -> Result<()>
+where
+    F: Fn(&Path, &Path) -> std::io::Result<()> + Sync,
+{
+    if files.is_empty() {
+        return Ok(());
+    }
+
+    let worker_count = thread_count.max(1).min(files.len());
+    let chunk_size = files.len().div_ceil(worker_count);
+    std::thread::scope(|scope| {
+        let handles = files
+            .chunks(chunk_size)
+            .map(|chunk| {
+                scope.spawn(move || {
+                    for (source, target) in chunk {
+                        copy_file(source, target)?;
+                    }
+                    Ok::<(), std::io::Error>(())
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let mut first_error = None;
+        for handle in handles {
+            match handle.join() {
+                Ok(Ok(())) => {}
+                Ok(Err(error)) => {
+                    if first_error.is_none() {
+                        first_error = Some(error);
+                    }
+                }
+                Err(_) => {
+                    if first_error.is_none() {
+                        first_error = Some(std::io::Error::other("Asset copy task panicked"));
+                    }
+                }
+            }
+        }
+
+        if let Some(error) = first_error {
+            Err(error.into())
+        } else {
+            Ok(())
+        }
+    })
 }
 
 /// Collect the `.asset` files into a asset manifest
@@ -70,4 +129,44 @@ pub fn get_macro_output_files(
         .flatten()
         .flat_map(|folder| fs::read_dir(folder.path()).into_iter().flatten().flatten())
         .map(|entry| entry.path()))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+    use std::sync::{Arc, Condvar, Mutex};
+    use std::time::Duration;
+
+    use super::copy_files_parallel;
+
+    #[test]
+    fn asset_copies_start_concurrently() {
+        let started = Arc::new((Mutex::new(0_usize), Condvar::new()));
+        let copy = {
+            let started = Arc::clone(&started);
+            move |_: &Path, _: &Path| {
+                let (count, changed) = &*started;
+                let mut count = count.lock().expect("start counter mutex");
+                *count += 1;
+                changed.notify_all();
+                let (count, timeout) = changed
+                    .wait_timeout_while(count, Duration::from_secs(2), |count| *count < 2)
+                    .expect("start counter condition variable");
+                if timeout.timed_out() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "asset copies did not start concurrently",
+                    ));
+                }
+                assert_eq!(*count, 2);
+                Ok(())
+            }
+        };
+        let copies = vec![
+            ("source-a".into(), "target-a".into()),
+            ("source-b".into(), "target-b".into()),
+        ];
+
+        copy_files_parallel(&copies, 2, &copy).expect("asset copies should overlap");
+    }
 }
