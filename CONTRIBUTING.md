@@ -3,6 +3,10 @@
 Thank you for considering contributing to Natrix! This guide will help you get started with the development process.
 Please join the [Discord Server](https://discord.gg/Rptzjf3Nnm) where we can answer any questions you might have! 
 
+>[!WARNING]
+> Natrix is a passion project by mainly one dev, it is founded on a very strong idea of ergonomics and idiomatic code.
+> As such, especially when it comes to the public api, maintainers might be extremely strict.
+
 ## Project Structure
 
 - **crates/natrix/**: Core framework library
@@ -40,7 +44,17 @@ When implementing new features, try to build on existing functionality in order 
 * Before working on an issue please ask to be assigned to prevent duplicate work.
 * For any issues that touch the public api please discuss the api design in the issue first.
 
+### Labels
+* Do not claim issues marked with `maintainer-only`
+* If an issue is marked `Status-Needs Discussion`, it (as the name suggests) needs design or implementation discussion, and any proposed implementation should be run by maintainers before being implemented.
+
 ## Pull Request Process
 1. If possible please try to run test suites before creating a PR.
 2. Update documentation if necessary
 3. Add tests for new functionality
+
+## AI-Code
+Natrix is not against AI-code, but there are rules you must follow:
+* We are not interested in llm "drive-by" prs, there are better things to throw your tokens at than github stats. 
+* We expect you to take full responsibility for any code you submit.
+* Any commit containing AI code must be marked as such using an appropriate `Co-authored-by`/`Assisted-by` trailer in the commit message.
