@@ -1,12 +1,11 @@
 //! Async context implementation for use with futures.
 
-use std::cell::RefCell;
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::rc::Weak;
 
 use crate::error_handling::log_or_panic;
-use crate::reactivity::context::InnerCtx;
+use crate::reactivity::context::{CtxHandle, InnerCtx};
 use crate::reactivity::{EventCtx, State};
 
 impl<S: State> EventCtx<'_, S> {
@@ -78,7 +77,7 @@ impl<S: State> DerefMut for AsyncCtx<'_, S> {
 #[must_use]
 pub struct AsyncCtxHandle<S: State> {
     /// The weak reference to the context
-    inner: Weak<RefCell<InnerCtx<S>>>,
+    inner: Weak<CtxHandle<S>>,
 }
 
 impl<S: State> Clone for AsyncCtxHandle<S> {
@@ -96,13 +95,13 @@ impl<S: State> AsyncCtxHandle<S> {
     /// Modifications to state are tracked and trigger UI updates when the closure exits.
     #[must_use]
     pub fn update<R>(&self, func: impl FnOnce(AsyncCtx<S>) -> R) -> Option<R> {
-        let rc = self.inner.upgrade()?;
-        let Ok(mut borrow) = rc.try_borrow_mut() else {
-            log_or_panic!("State borrowed while already borrowed.");
-            return None;
-        };
-
-        let result = borrow.track_changes(|ctx| func(AsyncCtx(ctx)));
-        Some(result)
+        let inner = self.inner.upgrade()?;
+        let result = inner.with_immediate_state(|ctx| ctx.track_changes(|ctx| func(AsyncCtx(ctx))));
+        if let Some(result) = result {
+            Some(result)
+        } else {
+            log_or_panic!("Re-entry in `AsyncCtxHandle::update`");
+            None
+        }
     }
 }

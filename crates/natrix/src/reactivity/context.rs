@@ -8,50 +8,111 @@
 
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
-use std::rc::{Rc, Weak};
+use std::rc::Weak;
 
 use crate::error_handling::log_or_panic;
 use crate::reactivity::State;
 use crate::reactivity::core::{HookStore, RenderingState};
+
+/// A function deferred for execution when a borrow can be obtained
+type DeferredFunction<S> = Box<dyn FnOnce(&mut InnerCtx<S>) + 'static>;
+
+/// A handle to the `InnerCtx` that handles deferring events in the case of borrow collisions
+pub(crate) struct CtxHandle<S: State> {
+    /// The inner ctx
+    ctx: RefCell<InnerCtx<S>>,
+    /// The list of functions to call once a borrow is obtained
+    deferred_events: RefCell<Vec<DeferredFunction<S>>>,
+}
+
+impl<S: State> CtxHandle<S> {
+    /// Create a new ctx handle from the given `ctx`
+    pub(crate) fn new(ctx: InnerCtx<S>) -> Self {
+        Self {
+            ctx: RefCell::new(ctx),
+            deferred_events: RefCell::default(),
+        }
+    }
+
+    /// Drain the deferred list and call them with the given ctx borrow
+    fn drain_deferrede_list(&self, ctx: &mut InnerCtx<S>) {
+        loop {
+            let deferred_events = {
+                let Ok(mut deferred_events) = self.deferred_events.try_borrow_mut() else {
+                    log_or_panic!("Deferred events list already borrowed");
+                    return;
+                };
+                std::mem::take(&mut *deferred_events)
+            };
+
+            if deferred_events.is_empty() {
+                break;
+            }
+
+            for deferred in deferred_events {
+                log::debug!("Calling deferred event.");
+                deferred(ctx);
+            }
+        }
+    }
+
+    /// Run the given function with the inner ctx immediately, returning `None` if the ctx is
+    /// already borrowed.
+    ///
+    /// Also calls deferred functions.
+    #[inline]
+    #[cfg(feature = "async")]
+    pub(crate) fn with_immediate_state<R>(
+        &self,
+        func: impl FnOnce(&mut InnerCtx<S>) -> R,
+    ) -> Option<R> {
+        if let Ok(mut ctx) = self.ctx.try_borrow_mut() {
+            let result = func(&mut ctx);
+            self.drain_deferrede_list(&mut ctx);
+            Some(result)
+        } else {
+            None
+        }
+    }
+
+    /// Run the given function as soon as possible, this will happen immediately inline if the ctx
+    /// isnt borrowed (most common case), otherwise it will be called as soon as the outermost frame
+    /// returns to this function.
+    #[inline]
+    pub(crate) fn with_state(&self, func: impl FnOnce(&mut InnerCtx<S>) + 'static) {
+        if let Ok(mut ctx) = self.ctx.try_borrow_mut() {
+            func(&mut ctx);
+            self.drain_deferrede_list(&mut ctx);
+        } else {
+            log::debug!("Re-entry dected, deferring event.");
+            let Ok(mut deferred_events) = self.deferred_events.try_borrow_mut() else {
+                log_or_panic!("Deferred events list already borrowed");
+                return;
+            };
+
+            deferred_events.push(Box::new(func));
+        }
+    }
+}
 
 /// The core framework context, holds user state and reactive infrastructure.
 pub(crate) struct InnerCtx<S: State> {
     /// The user-defined reactive state
     pub(super) data: S,
     /// A weak reference to ourself for event handlers to access without explicit passing
-    pub(crate) this: Weak<RefCell<Self>>,
+    pub(crate) this: Weak<CtxHandle<S>>,
     /// Reactive hooks storage
     pub(super) hooks: HookStore<S>,
 }
 
 impl<S: State> InnerCtx<S> {
-    /// Create a minimal instance without wrapping in Rc
-    ///
-    /// Warning: the `this` weak reference is not set up yet
-    pub(super) fn create_base(data: S) -> Self {
+    /// Create a new instance of the state, returning an `Rc` to it
+    pub(super) fn new(data: S, this: Weak<CtxHandle<S>>) -> Self {
         Self {
             data,
-            this: Weak::new(),
+            this,
             hooks: HookStore::new(),
         }
-    }
-
-    /// Convert this into a finalized state by populating the weak reference and returning an Rc
-    pub(super) fn finalize(self) -> Rc<RefCell<Self>> {
-        let this = Rc::new(RefCell::new(self));
-
-        if let Ok(mut borrow) = this.try_borrow_mut() {
-            borrow.this = Rc::downgrade(&this);
-        } else {
-            log_or_panic!("State (somehow) already borrowed in `finalize`");
-        }
-
-        this
-    }
-
-    /// Create a new instance of the state, returning an `Rc` to it
-    pub(super) fn new(data: S) -> Rc<RefCell<Self>> {
-        Self::create_base(data).finalize()
     }
 }
 

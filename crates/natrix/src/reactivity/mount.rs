@@ -1,11 +1,10 @@
 //! Mounting root elements into the dom.
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
-use crate::dom::element::Element;
+use crate::dom::element::{Element, generate_fallback_node};
 use crate::get_document;
-use crate::reactivity::context::InnerCtx;
+use crate::reactivity::context::{CtxHandle, InnerCtx};
 use crate::reactivity::core::RenderingState;
 use crate::reactivity::{KeepAlive, State};
 
@@ -19,7 +18,7 @@ use crate::reactivity::{KeepAlive, State};
 )]
 pub struct RenderResult<C: State> {
     /// The state
-    data: Rc<RefCell<InnerCtx<C>>>,
+    data: Rc<CtxHandle<C>>,
     /// The various things that need to be kept alive
     keep_alive: Vec<KeepAlive>,
 }
@@ -94,10 +93,6 @@ pub fn render_state<C: State>(
         "Mounting root state {} at #{target_id}",
         std::any::type_name::<C>()
     );
-    let data = InnerCtx::new(initial_state);
-
-    let mut borrow_data = data.borrow_mut();
-
     let mut keep_alive = Vec::new();
     let mut hooks = Vec::new();
 
@@ -105,11 +100,20 @@ pub fn render_state<C: State>(
         keep_alive: &mut keep_alive,
         hooks: &mut hooks,
     };
-    let node = tree
-        .resolve(())
-        .0
-        .render_static(&mut borrow_data, &mut render_state)
-        .into_node();
+
+    let mut node = generate_fallback_node();
+
+    let data = Rc::new_cyclic(|weak| {
+        let mut data = InnerCtx::new(initial_state, Weak::clone(weak));
+
+        node = tree
+            .resolve(())
+            .0
+            .render_static(&mut data, &mut render_state)
+            .into_node();
+
+        CtxHandle::new(data)
+    });
 
     let document = get_document();
     let target = document
@@ -118,8 +122,6 @@ pub fn render_state<C: State>(
     target
         .replace_with_with_node_1(&node)
         .map_err(|_| "Failed to replace mount point")?;
-
-    drop(borrow_data);
 
     Ok(RenderResult { data, keep_alive })
 }

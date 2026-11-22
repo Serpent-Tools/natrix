@@ -7,7 +7,7 @@ use crate::reactivity::context::EventCtx;
 /// Trait for converting a struct to needed event info.
 pub trait Event {
     /// The js event the handler gets
-    type JsEvent: JsCast;
+    type JsEvent: JsCast + 'static;
     /// The actual name
     const EVENT_NAME: &str;
 }
@@ -25,10 +25,10 @@ pub trait Event {
 /// ```
 pub trait EventHandler<C, E: Event> {
     /// Return self, but constrained to the expected types
-    fn func(self) -> impl Fn(EventCtx<C>, E::JsEvent) + 'static;
+    fn func(self) -> impl Fn(EventCtx<C>, E::JsEvent) + Clone + 'static;
 }
-impl<C, E: Event, F: Fn(EventCtx<C>, E::JsEvent) + 'static> EventHandler<C, E> for F {
-    fn func(self) -> impl Fn(EventCtx<C>, E::JsEvent) + 'static {
+impl<C, E: Event, F: Fn(EventCtx<C>, E::JsEvent) + Clone + 'static> EventHandler<C, E> for F {
+    fn func(self) -> impl Fn(EventCtx<C>, E::JsEvent) + Clone + 'static {
         self
     }
 }
