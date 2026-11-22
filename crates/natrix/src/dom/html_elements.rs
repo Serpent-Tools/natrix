@@ -174,13 +174,12 @@ impl<C: State, T> HtmlElement<C, T> {
                     log_or_panic!("State dropped without event handlers being cleaned up");
                     return;
                 };
-                let Ok(mut event_ctx) = event_ctx.try_borrow_mut() else {
-                    log_or_panic!("State already mutably borrowed in event handler");
-                    return;
-                };
 
-                event_ctx.track_changes(|event_ctx| {
-                    function(EventCtx(event_ctx), event);
+                let function = function.clone();
+                event_ctx.with_state(move |event_ctx| {
+                    event_ctx.track_changes(|event_ctx| {
+                        function(EventCtx(event_ctx), event);
+                    });
                 });
             });
             let closure = Closure::wrap(function);
