@@ -11,6 +11,11 @@ keywords = ["frontend", "framework", "web", "wasm"]
 categories = ["gui", "wasm", "web-programming"]
 readme = "../../README.md"
 
+[[bin]]
+name = "natrix"
+path = "src/main.rs"
+doc = false
+
 [lints]
 workspace = true
 
@@ -45,7 +50,3 @@ ignore = "0.4.23"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 
-
-[[bin]]
-name = "natrix"
-path = "src/main.rs"
