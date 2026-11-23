@@ -22,9 +22,11 @@ fn render_async_component() -> impl Element<AsyncComponent> {
         .on::<events::Click>(|mut ctx: EventCtx<AsyncComponent>, _| {
             ctx.use_async(async |ctx| {
                 async_utils::sleep_milliseconds(10).await;
+
                 ctx.update(|mut ctx| {
                     *ctx.data += 10;
                 })?;
+
                 Some(())
             });
         })

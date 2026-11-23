@@ -6,5 +6,6 @@ mod events;
 mod generic_component;
 mod guards;
 mod nested_reactivity;
+mod re_entry;
 mod simple_reactivty;
 mod simple_rendering;

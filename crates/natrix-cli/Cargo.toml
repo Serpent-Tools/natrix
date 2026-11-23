@@ -11,6 +11,11 @@ keywords = ["frontend", "framework", "web", "wasm"]
 categories = ["gui", "wasm", "web-programming"]
 readme = "../../README.md"
 
+[[bin]]
+name = "natrix"
+path = "src/main.rs"
+doc = false
+
 [lints]
 workspace = true
 
@@ -25,7 +30,7 @@ owo-colors = { version = "4.2.2", default-features = false, features=["supports-
 anyhow = { version = "1.0.99", default-features = false }
 
 # Build Tools
-oxc = { version = "0.158.0", default-features = false, features = ["minifier", "codegen", "ast_visit"] }
+oxc = { version = "0.159.0", default-features = false, features = ["minifier", "codegen", "ast_visit"] }
 lightningcss = { version = "1.0.0-alpha.67", default-features = false, features = ["visitor"] }
 wasmparser = { version = "0.263.0", features = [], default-features = false }
 rustc_version = "0.4.1"
@@ -45,7 +50,3 @@ ignore = "0.4.23"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 
-
-[[bin]]
-name = "natrix"
-path = "src/main.rs"
