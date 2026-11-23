@@ -13,6 +13,7 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use crate::options;
 use crate::prelude::*;
 
+/// Shared progress display keeps concurrent build spinners on separate rows.
 static BUILD_PROGRESS: OnceLock<MultiProgress> = OnceLock::new();
 
 /// Create a spinner with the given msg
