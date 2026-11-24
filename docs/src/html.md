@@ -50,19 +50,19 @@ Children can also be reactive using closures.
 # use natrix::prelude::*;
 #
 # #[derive(State)]
-# struct MyComponent {
+# struct App {
 #     pub is_active: Signal<bool>,
 # }
 #
-# fn render(ctx: RenderCtx<MyComponent>) -> impl Element<MyComponent> {
+# fn render(ctx: RenderCtx<App>) -> impl Element<App> {
 e::div()
     .child(e::button()
         .text("Click me!")
-        .on::<events::Click>(|mut ctx: EventCtx<MyComponent>, _| {
+        .on::<events::Click>(|mut ctx: EventCtx<App>, _| {
             *ctx.is_active = !*ctx.is_active;
         })
     )
-    .child(|ctx: RenderCtx<MyComponent>| {
+    .child(|ctx: RenderCtx<App>| {
         if *ctx.is_active {
             Some(e::p().text("Active!"))
         } else {
@@ -79,14 +79,14 @@ You can use the [`format_elements`](natrix::format_elements) macro to get `forma
 # use natrix::prelude::*;
 #
 # #[derive(State)]
-# struct MyComponent {
+# struct App {
 #     pub counter: Signal<u8>,
 #     pub target: Signal<u8>,
 # }
 #
-# fn render(ctx: RenderCtx<MyComponent>) -> impl Element<MyComponent> {
+# fn render(ctx: RenderCtx<App>) -> impl Element<App> {
 e::h1().children(natrix::format_elements!(
-    |ctx: RenderCtx<MyComponent>| "Counter is {}, just {} clicks left!", 
+    |ctx: RenderCtx<App>| "Counter is {}, just {} clicks left!", 
     *ctx.counter, *ctx.target - *ctx.counter
 ))
 # }
@@ -97,17 +97,17 @@ Which expands to effectively:
 # use natrix::prelude::*;
 #
 # #[derive(State)]
-# struct MyComponent {
+# struct App {
 #     pub counter: Signal<u8>,
 #     pub target: Signal<u8>,
 # }
 #
-# fn render(ctx: RenderCtx<MyComponent>) -> impl Element<MyComponent> {
+# fn render(ctx: RenderCtx<App>) -> impl Element<App> {
 e::h1()
     .text("Counter is ")
-    .child(|ctx: RenderCtx<MyComponent>| *ctx.counter)
+    .child(|ctx: RenderCtx<App>| *ctx.counter)
     .text(", just ")
-    .child(|ctx: RenderCtx<MyComponent>| *ctx.target - *ctx.counter)
+    .child(|ctx: RenderCtx<App>| *ctx.target - *ctx.counter)
     .text(" clicks left!")
 # }
 ```
@@ -122,14 +122,14 @@ This macro supports anything that is a element, including html elements.
 # use natrix::prelude::*;
 #
 # #[derive(State)]
-# struct MyComponent {
+# struct App {
 #     pub counter: Signal<u8>,
 #     pub target: Signal<u8>,
 # }
 #
-# fn render(ctx: RenderCtx<MyComponent>) -> impl Element<MyComponent> {
+# fn render(ctx: RenderCtx<App>) -> impl Element<App> {
 e::h1().children(natrix::format_elements!(
-    |ctx: RenderCtx<MyComponent>| "Counter is {}, just {} clicks left!", 
+    |ctx: RenderCtx<App>| "Counter is {}, just {} clicks left!", 
     e::h1().text(*ctx.counter), *ctx.target - *ctx.counter
 ))
 # }
@@ -185,15 +185,15 @@ Attributes can also be reactive using closures.
 # use natrix::prelude::*;
 #
 # #[derive(State)]
-# struct MyComponent {
+# struct App {
 #     pub is_active: Signal<bool>,
 # }
 #
-# fn render(ctx: RenderCtx<MyComponent>) -> impl Element<MyComponent> {
+# fn render(ctx: RenderCtx<App>) -> impl Element<App> {
 e::button()
-    .disabled(|ctx: RenderCtx<MyComponent>| !*ctx.is_active)
+    .disabled(|ctx: RenderCtx<App>| !*ctx.is_active)
     .text("Click me!")
-    .on::<events::Click>(|mut ctx: EventCtx<MyComponent>, _| {
+    .on::<events::Click>(|mut ctx: EventCtx<App>, _| {
         *ctx.is_active = !*ctx.is_active;
     })
 # }
@@ -240,13 +240,13 @@ Classes can also be wrapped in `Option` and `Result`, and be reactive using clos
 const ACTIVE: Class = natrix::class!();
 
 # #[derive(State)]
-# struct MyComponent {
+# struct App {
 #     pub is_active: Signal<bool>,
 # }
 #
-# fn render(ctx: RenderCtx<MyComponent>) -> impl Element<MyComponent> {
+# fn render(ctx: RenderCtx<App>) -> impl Element<App> {
 e::div()
-    .class(|ctx: RenderCtx<MyComponent>| {
+    .class(|ctx: RenderCtx<App>| {
         if *ctx.is_active {
             Some(ACTIVE)
         } else {
@@ -255,9 +255,18 @@ e::div()
     })
     .child(e::button()
         .text("Click me!")
-        .on::<events::Click>(|mut ctx: EventCtx<MyComponent>, _| {
+        .on::<events::Click>(|mut ctx: EventCtx<App>, _| {
             *ctx.is_active = !*ctx.is_active;
         })
     )
 # }
 ```
+
+## `.get_element`, custom dom operations
+If natrix doesn't expose a certain dom operation, or you need access to the actual dom node for some reason natrix exposes this *during rendering* using [`.get_element`](natrix::dom::html_elements::HtmlElement::get_element).
+Do note that while natrix performs dom operations eagerly where it can, certain dom operations, especially reactive ones, will not be reflected in `.get_element` until after your render-closure has returned and let natrix fill it out.
+This is most useful for working with third-party libraries that want a dom element to mount to, such as graphing libraries.
+
+> [!WARNING]
+> Natrix generally assumes it owns the dom, as such you should not modify attributes, text content, etc. that natrix also controls using this method.
+

@@ -6,9 +6,9 @@ The framework makes liberal use of debug only panics, but is very careful about 
 
 ### Very unlikely
 - **Js Environment Corruption** - If something causes required javascript methods to be missing, or otherwise fail.
-  - In release natrix will skip executing the action it attempted, for example creating a dom node.
+    - In release natrix will skip executing the action it attempted, for example creating a dom node.
 - **Unexpected Dom State** - If natrix cant find a expected dom node or the node isnt of the expected type.
-  - Natrix will skip updating that part of the dom tree
+    - Natrix will skip updating that part of the dom tree
 - **Internal Borrow Errors** - Natrix uses `RefCell` internally, but the api design means panics should be impossible.
     - Natrix will skip handling the event/message, this might lead to dropped messages.
 
