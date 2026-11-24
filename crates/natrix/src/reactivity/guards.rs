@@ -8,8 +8,6 @@ use crate::lens::{Chain, OperationOptic, Optic, Project, Projectable, Shape};
 use crate::reactivity::State;
 use crate::reactivity::context::RenderCtx;
 
-// FIX: Document that a recursive root state can break guards :P
-
 /// Trait that powers the `ctx.guard` functionality, this can be implemented for your own enums to
 /// provide them with guard functionality.
 ///
