@@ -236,3 +236,14 @@ match ctx.guard(field!(App, .operation).deref()) {
 }
 # }}
 ```
+
+### Guard rules
+While we would love for guards to "just work", there are some rules we can't enforce that natrix assumes are followed when using guards.
+
+* No interior mutability (see above).
+* Use `try_get` in async (see [optics](lens.md) or [async](async-components.md)).
+* Don't save the optic on your app state, while technically this doesn't require interior mutability it still would move the guard out of its intended scope.
+* Don't misuse them with recursive root states, such as an `App` containing itself in some ways and using the guard on the inner one.
+
+> [!IMPORTANT]
+> In other words, don't call a guard outside the rendering tree it was created in, and if you do, use `.try_get`.
