@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+use rayon::prelude::*;
+
 use super::{MACRO_OUTPUT_DIR, options, utils};
 use crate::prelude::*;
 
@@ -34,13 +36,23 @@ pub fn collect_macro_output(config: &options::BuildConfig) -> Result<AssetManife
 /// Copy asset manifest to dist folder
 pub fn copy_assets_to_dist(config: &options::BuildConfig, manifest: &AssetManifest) -> Result<()> {
     let spinner = utils::create_spinner("📂 Copying Assets")?;
-    for (wanted_url, file) in &manifest.mapping {
-        let target_file = config.dist.join(wanted_url);
-        if let Err(err) = fs::copy(file, target_file) {
-            spinner.finish();
-            return Err(err.into());
-        }
-    }
+    let copies = manifest
+        .mapping
+        .iter()
+        .map(|(wanted_url, file)| (file.clone(), config.dist.join(wanted_url)))
+        .collect::<Vec<_>>();
+
+    let workers = std::thread::available_parallelism()
+        .map_or(1, std::num::NonZeroUsize::get)
+        .min(8);
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(workers)
+        .build()?;
+    pool.install(|| {
+        copies
+            .par_iter()
+            .try_for_each(|(source, target)| fs::copy(source, target).map(|_| ()))
+    })?;
 
     spinner.finish();
     Ok(())

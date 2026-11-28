@@ -4,22 +4,28 @@ use std::borrow::Cow;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use anyhow::Result;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use crate::options;
 use crate::prelude::*;
 
+/// Shared progress display keeps concurrent build spinners on separate rows.
+static BUILD_PROGRESS: OnceLock<MultiProgress> = OnceLock::new();
+
 /// Create a spinner with the given msg
 pub fn create_spinner(msg: &str) -> Result<ProgressBar> {
-    let spinner = ProgressBar::new_spinner().with_style(
-        ProgressStyle::with_template(&format!(
-            "{{spinner:.red}} {} {{msg}}",
-            uwu_style!(msg, bright_blue)
-        ))?
-        .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏-"),
+    let spinner = BUILD_PROGRESS.get_or_init(MultiProgress::new).add(
+        ProgressBar::new_spinner().with_style(
+            ProgressStyle::with_template(&format!(
+                "{{spinner:.red}} {} {{msg}}",
+                uwu_style!(msg, bright_blue)
+            ))?
+            .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏-"),
+        ),
     );
     spinner.enable_steady_tick(Duration::from_millis(100));
     Ok(spinner)
